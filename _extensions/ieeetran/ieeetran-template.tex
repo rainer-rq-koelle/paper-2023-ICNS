@@ -1,0 +1,103 @@
+\documentclass[letterpaper, 10 pt, journal, twoside]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+% Quarto basics minus two problematic packages
+\RequirePackage{scrlfile}
+\PreventPackageFromLoading{sidenotes}
+\PreventPackageFromLoading{marginnotes}
+$pandoc.tex()$
+
+% Common packages
+\usepackage[T1]{fontenc}
+\usepackage{lipsum}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{physics}
+\usepackage{siunitx}
+\usepackage{graphicx}
+\usepackage[hyphens]{url}
+\usepackage{threeparttable}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{makecell}
+\usepackage{orcidlink}
+% monofont
+\usepackage[scaled=0.8]{inconsolata}
+
+%styled tabled generated from pandas
+\usepackage{colortbl}
+\usepackage{multirow}
+\usepackage{stfloats} % https://tex.stackexchange.com/a/324358
+
+% Fix table in 2-column format and enable wide table
+% https://tex.stackexchange.com/a/224096
+\makeatletter
+% My tables
+\newenvironment{mytable}[1][htbp]{
+    \begin{figure}[#1]
+    \footnotesize
+    \onecolumn
+    \begin{minipage}{0.5\textwidth}}
+{
+    \end{minipage}
+    \twocolumn
+    \end{figure}}
+
+\newenvironment{mywidetable}[1][tbp]{
+    \begin{figure*}[#1]
+    \footnotesize
+    \onecolumn
+    \begin{minipage}{1.0\textwidth}}
+{
+    \end{minipage}
+    \twocolumn
+    \end{figure*}}
+
+\renewenvironment{table*}{\begin{mywidetable}}{\end{mywidetable}\ignorespacesafterend}
+\renewenvironment{table}{\begin{mytable}}{\end{mytable}\ignorespacesafterend}    
+\makeatother
+
+
+
+% Muted text (for filler text)
+\newcommand\muted[1]{%
+\bgroup
+\hskip0pt\color{black!40!}%
+#1%
+\egroup
+}
+
+% color links
+\usepackage{hyperref}
+\hypersetup{ colorlinks, citecolor=teal, linkcolor=teal, urlcolor=teal}
+
+
+\begin{document}
+
+% author blocks
+\author{
+    $for(by-author)$
+    $by-author.name.literal$\(^$by-author.note.text$\)$if(by-author.orcid)$\orcidlink{$by-author.orcid$}$endif$$sep$, $endfor$
+
+    \thanks{$for(affiliations)$\(^$it.number$\)$affiliations.name$.$sep$ $endfor$}
+    \thanks{Released on: $date$}
+    \thanks{$note$.}
+}
+
+
+% title
+\title{$title$}
+\maketitle
+
+% abstract
+\begin{abstract}
+    $abstract$
+\end{abstract}
+
+% body
+$body$
+
+% done
+\end{document}

@@ -1,0 +1,116 @@
+---
+title: "Extracting OSM data"
+format: html
+---
+
+```{r setup}
+# setup
+library(tidyverse)
+library(osmdata)
+library(sf)
+```
+
+```{r}
+# OSM query
+bb_lonlat <- c(-0.223915,51.141733,-0.155851,51.165738)
+apt_icao  <- "EGKK"
+apt_name  <- "London Gatwick"
+
+q <- opq(bbox = bb_lonlat) %>% 
+  add_osm_feature(
+    key = "aeroway"
+    ,value =c("aerodrome", "apron", "control_tower", "gate", "hangar"
+              ,"helipad", "runway", "taxiway", "terminal") ) %>% 
+  osmdata_sf() 
+# %>%
+#   unique_osmdata()
+```
+
+```{r}
+g <- ggplot() +
+  geom_sf(data = q$osm_polygons
+          ,inherit.aes = FALSE
+          ,color = "lightblue"
+          #,fill  = "lightblue"
+          ) +
+  geom_sf(data = q$osm_lines %>% filter(aeroway != "runway")
+          , color = "grey"
+          ) +
+  geom_sf(data = q$osm_lines %>% filter(aeroway == "runway"),
+          inherit.aes = FALSE,
+          color = "black",
+          size = 2 #.4
+          ,alpha = .8) +
+  theme_void() +
+  labs(title = "EGKK")
+g
+```
+
+
+Extract runway and endpoints
+
+```{r}
+rwys_ls <- q$osm_lines |> filter(aeroway == "runway", is.na(runway))
+
+ggplot() + geom_sf(data = rwys_ls)
+```
+
+```{r}
+rwys_pts <- st_cast(rwys_ls, "POINT")
+
+ggplot() + 
+  geom_sf(data = rwys_ls) +
+  geom_sf(data = rwys_pts, color = "red")
+```
+
+Go for start and endpoints of linestring
+
+```{r}
+thrs_pts1 <- lwgeom::st_startpoint(rwys_ls)
+thrs_pts2 <- lwgeom::st_endpoint(rwys_ls)
+
+ggplot() + 
+  geom_sf(data = rwys_ls) +
+  geom_sf(data = thrs_pts1, size = 3, fill = NA) +
+  geom_sf(data = thrs_pts2, size = 3, color = "lightgreen" , fill = NA) +
+  geom_sf(data = rwys_pts, color = "red")
+  
+```
+
+```{r}
+my_pts1 <- lwgeom::st_startpoint(rwys_ls[1,])
+my_pts2 <- lwgeom::st_endpoint(rwys_ls[1,])
+
+ggplot() + 
+  geom_sf(data = rwys_ls[1,]) +
+  geom_sf(data = my_pts1, color = "red") + 
+  geom_sf(data = my_pts2, color = "blue")
+```
+
+```{r}
+extract_rwy_linestrings <- function(.osm_sf){
+  rwys_ls <- .osm_sf$osm_lines |> filter(aeroway == "runway", is.na(runway))
+  message("number of runways: ", nrow(rwys_ls))
+  rwys_ls
+}
+
+pt_to_latlon <- function(.pt_sf){
+  .pt_sf |> 
+    sf::st_coordinates() |> 
+    dplyr::as_tibble() |> 
+    dplyr::rename(LON = X, LAT = Y) 
+}
+
+extract_thresholds <- function(.rwy_ls){
+  thr1 <- lwgeom::st_startpoint(.rwy_ls) |> pt_to_latlon()
+  thr2 <- lwgeom::st_endpoint(  .rwy_ls) |> pt_to_latlon()
+  
+  bind_rows(thr1, thr2)
+}
+```
+
+```{r}
+rwys_ls <- extract_rwy_linestrings(q)
+extract_thresholds(rwys_ls)
+```
+

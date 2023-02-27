@@ -1,0 +1,151 @@
+---
+title: "Data analytics"
+format: pdf
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+```
+
+
+This script summarises the data analytical steps for the ICNS2023 paper.
+
+```{mermaid}
+%%| fig-width: 6
+flowchart LR
+  OSN[(Opensky \nNetwork)]
+  OSN --> A[Data \nExtraction] --> B(Arrival \nTrajectories)
+  B --> C{Decision}
+  C --> D[Result one]
+  C --> E[Result two]
+```
+
+## Opensky Data Extraction
+
+* use/refine code developed for 3Di to download OSN-Monday-Dumps
+
+```{r}
+source("./R/osn_dumps.R")
+source("./R/osn_read_tardump.R")
+source("./R/osn_make_nice_names.R")
+```
+
+* OSN dumps have been stored for re-usage in a folder above the project hierarchy
+* load a single day, e.g. 1. August 2019
+* read in the chosen day
+* standardise OSN naming conventions
+
+```{r}
+#| message: false
+pth_to_dumps <- "../__DATA/OSN-dumps"
+ptn <- "2019-08-01"
+
+# list downloaded dumps
+fns <- list.files(path = pth_to_dumps, pattern = ptn, full.names = TRUE)
+
+# load list of chosen dumps
+ds  <- fns |> 
+  purrr::map_dfr(.f = read_osn_tar_file) |> 
+  make_nice_names_osn()
+```
+
+* we want to study arrivals at certain airports, i.e. 200NM
+* let's take London Heathrow (EGLL)
+  + conversions done by hand & https://www.fcc.gov/media/radio/dms-decimal
+
+EGLL Lat: 512839N Long: 0002741W   51.4775 -0461389
+09L
+
+089.67°
+
+3901 x 50 M	
+RWY surface: Asphalt, Grooved
+PCN 83/F/A/W/T
+
+SWY surface: Asphalt, Grooved
+PCN 83/F/A/W/T
+
+512839.00N 0002905.97W THR 78.6 FT
+TDZ 81.3 FT	
+27R
+
+269.71°
+
+3901 x 50 M	
+RWY surface: Asphalt, Grooved
+PCN 83/F/A/W/T
+
+SWY surface: Asphalt, Grooved
+PCN 83/F/A/W/T
+
+512839.63N 0002559.82W
+151.0 FT	
+THR 78.1 FT
+TDZ 79.3 FT	
+09R
+
+089.68°
+
+3658 x 50 M	
+RWY surface: Asphalt, Grooved
+PCN 83/F/A/W/T
+
+SWY surface: Asphalt, Grooved
+PCN 83/F/A/W/T
+
+512753.25N 0002856.33W
+151.0 FT	
+THR 75.3 FT
+TDZ 76.2 FT	
+27L
+
+269.72°
+
+3658 x 50 M	
+RWY surface: Asphalt, Grooved
+PCN 83/F/A/W/T
+
+SWY surface: Asphalt, Grooved
+PCN 83/F/A/W/T
+
+512753.82N 0002602.76W
+151.0 FT	
+THR 76.8 FT
+TDZ 77.8 FT
+
+```{r}
+# airport-data.com - server down???   source("./R/get_apt_info.R")
+## aip_egll <- get_apt_info("EGLL")
+
+apts <- c("EGLL","EDDF","EHAM","KATL","KJFK","KORD","WSSS")
+
+# default back to ourairports.com
+# url <- "https://davidmegginson.github.io/ourairports-data/airports.csv"
+# aip_apts <- readr::read_csv(url)
+# aip_apts <- aip_apts |> filter(ident %in% apts)
+```
+
+~REF, ~LAT, ~LON, ~ELEV, ~SRC
+  "EGLL", "OSN-center", 51.4706, -0.461941, 83, "https://opensky-network.org/airport-profile?icao=EGLL"
+
+```{r}
+aip_apts <- tribble(
+  ~ICAO,   ~REF,         ~LAT,    ~LON,     ~ELEV, ~SRC 
+  ,"EGLL", "OSN-center", 51.4706, -0.461941, 83, "https://opensky-network.org/airport-profile?icao=EGLL"
+  ,"EGLL", "ARP",        51.4775, -0.461389, NA, "AIP"
+  ,"EGLL", "THR-09L",    51.4775, -0.484992, 79 ,"AIP - 512839.00N 0002905.97W THR 78.6 FT"
+  ,"EGKK", "OSN-center", 51.148102,-0.190277, 202,"https://opensky-network.org/airport-profile?icao=EGKK"
+  ,"EDDF", "OSN-center", 50.033333,8.570556, 364,"https://opensky-network.org/airport-profile?icao=EDDF"
+  ,"EHAM", "OSN-center", 52.308601,4.763889, -11, "https://opensky-network.org/airport-profile?icao=EHAM"
+  ,"KATL", "OSN-center", 33.6366996,-84.4281005,1026,"https://opensky-network.org/airport-profile?icao=KATL"
+  ,"KORD", "OSN-center", 41.9785996,-87.9048004,672, "https://opensky-network.org/airport-profile?icao=KORD"
+  ,"KJFK", "OSN-center", 40.6398010,-73.7789002, 13, "https://opensky-network.org/airport-profile?icao=KJFK"
+)
+write_csv(aip_apts, file = "./data/aip.csv")
+aip_apts
+```
+
+
+Check for our study airport whether flights arrive (or depart)
+
+* trajectory of LAT/LON within a certain distance around an airport and below a certain altitude

@@ -1,0 +1,52 @@
+---
+# template taken from https://github.com/gael-close/ieeetran
+#----------------------------------------------------------
+title: Arrival Management with Open Data
+format:
+  ieeetran-pdf:
+    keep-tex: true
+    
+author:
+  - name: Rainer Koelle
+    orcid: 0000-0000-0000-0000
+    email: rainer.koelle@eurocontrol.int
+    note: 1  # workaround i/o linked affiliation
+  - name: Second Author
+    orcid: 0000-0000-0000-0000
+    email: second@example.org
+    note: 1
+  - name: Third Author
+    email: third@example.org
+    note: 2
+#date: 01-Jan-2022.
+affiliations:
+  - id: 1
+    name: Performance Review Unit, EUROCONTROL
+    city: Brussels
+    country: Belgium
+  - id: 2
+    name: Some corporation
+    city: New York
+    country: USA
+
+abstract: |
+  This document is a sample illustrating the Quarto `ieeetran` template.
+  It includes the key elements of a scientific articles 
+  (references, equations, figures, tables, code, cross references).
+  The template enables the generation of IEEE-formatted article from a Jupypter notebook.
+keywords: [template, demo]
+reference-section-title: References
+bibliography: bibliography.bib
+note: Extra footnote.
+# filters:
+#    - latex-environment
+environments: [mytable, mywidetable]
+---
+
+# Header 1
+
+## header 2
+
+some cool text.
+
+Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
