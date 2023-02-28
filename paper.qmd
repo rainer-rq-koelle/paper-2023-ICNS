@@ -43,10 +43,74 @@ note: Extra footnote.
 environments: [mytable, mywidetable]
 ---
 
-# Header 1
+# Introduction
+
+The contribution of this paper comprise:
+
+-   conceptualisation of sequencing separation for arrival management and development of an open data and open software based implementation of the approach; and
+
+-   use-case application of the developed approach on a subset of airports within the European <!-- and international context -->
+
+# Trajectory-Based Operations - Arrival Management
 
 ## header 2
 
 some cool text.
 
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
+Lorem Ipsum is simply dummy text of the printing and typesetting industry.
+Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.
+It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.
+It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
+
+# Data and Conceptual Approach
+
+## Approach
+
+data preparation
+
+-   trajectory data - Opensky Network, weekly downloads
+-   airport information - Openstreet Map
+
+data downloaded & script development, data cleaning
+
+## Open Data for Operational Performance Monnitoring
+
+## Arrival Sequencing
+
+sequence separation
+
+# Case Study - Results
+
+## Data Sampling
+
+At the time of writing no global open flight table exists.
+For this study, we validated the sample with reference data available to the Performance Review Unit.
+Under the EUROCONTROL Performance Review System, airport operators report movement data on a monthly basis [@apdf_v1_2019].
+
+# Conclusions
+
+<!-- what did this paper show -->
+
+This paper aimed at exploring a data-driven approach to measuring arrival management based on open data.
+
+<!-- strength and weaknesses -->
+
+<!-- application -->
+
+<!-- further research -->
+
+<!-- final appraisal -->
+
+# Reproducibility  {.unnumbered}
+
+This paper has been built with the R/RStudio ecosystem.
+The draft manuscript and its supporting data preparatory steps are archived at https://github.com/rainer-rq-koelle/paper-2023-ICNS.
+
+The script to download the weekly global datasets are included.
+The cleaned trajectory data is stored at: \<\<tbd\>\>.
+
+# Acknowledgment and Disclaimer {.unnumbered}
+
+The authors thank the comments by XX YY ZZ.
+
+The views expressed are the authors' own and do not represent a policy or position of EUROCONTROL <!-- and co-authors organisations -->.

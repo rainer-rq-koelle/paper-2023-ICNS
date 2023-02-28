@@ -31,6 +31,29 @@
 \makeatletter
 \def\fps@figure{htbp}
 \makeatother
+\newlength{\cslhangindent}
+\setlength{\cslhangindent}{1.5em}
+\newlength{\csllabelwidth}
+\setlength{\csllabelwidth}{3em}
+\newlength{\cslentryspacingunit} % times entry-spacing
+\setlength{\cslentryspacingunit}{\parskip}
+\newenvironment{CSLReferences}[2] % #1 hanging-ident, #2 entry spacing
+ {% don't indent paragraphs
+  \setlength{\parindent}{0pt}
+  % turn on hanging indent if param 1 is 1
+  \ifodd #1
+  \let\oldpar\par
+  \def\par{\hangindent=\cslhangindent\oldpar}
+  \fi
+  % set entry spacing
+  \setlength{\parskip}{#2\cslentryspacingunit}
+ }%
+ {}
+\usepackage{calc}
+\newcommand{\CSLBlock}[1]{#1\hfill\break}
+\newcommand{\CSLLeftMargin}[1]{\parbox[t]{\csllabelwidth}{#1}}
+\newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{#1}\break}
+\newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
 
 \makeatletter
 \makeatother
@@ -178,8 +201,24 @@ corporation.}
 \end{abstract}
 
 % body
-\hypertarget{header-1}{%
-\section{Header 1}\label{header-1}}
+\hypertarget{introduction}{%
+\section{Introduction}\label{introduction}}
+
+The contribution of this paper comprise:
+
+\begin{itemize}
+\item
+  conceptualisation of sequencing separation for arrival management and
+  development of an open data and open software based implementation of
+  the approach; and
+\item
+  use-case application of the developed approach on a subset of airports
+  within the European
+\end{itemize}
+
+\hypertarget{trajectory-based-operations---arrival-management}{%
+\section{Trajectory-Based Operations - Arrival
+Management}\label{trajectory-based-operations---arrival-management}}
 
 \hypertarget{header-2}{%
 \subsection{header 2}\label{header-2}}
@@ -195,6 +234,88 @@ essentially unchanged. It was popularised in the 1960s with the release
 of Letraset sheets containing Lorem Ipsum passages, and more recently
 with desktop publishing software like Aldus PageMaker including versions
 of Lorem Ipsum.
+
+\hypertarget{data-and-conceptual-approach}{%
+\section{Data and Conceptual
+Approach}\label{data-and-conceptual-approach}}
+
+\hypertarget{approach}{%
+\subsection{Approach}\label{approach}}
+
+data preparation
+
+\begin{itemize}
+\tightlist
+\item
+  trajectory data - Opensky Network, weekly downloads
+\item
+  airport information - Openstreet Map
+\end{itemize}
+
+data downloaded \& script development, data cleaning
+
+\hypertarget{open-data-for-operational-performance-monnitoring}{%
+\subsection{Open Data for Operational Performance
+Monnitoring}\label{open-data-for-operational-performance-monnitoring}}
+
+\hypertarget{arrival-sequencing}{%
+\subsection{Arrival Sequencing}\label{arrival-sequencing}}
+
+sequence separation
+
+\hypertarget{case-study---results}{%
+\section{Case Study - Results}\label{case-study---results}}
+
+\hypertarget{data-sampling}{%
+\subsection{Data Sampling}\label{data-sampling}}
+
+At the time of writing no global open flight table exists. For this
+study, we validated the sample with reference data available to the
+Performance Review Unit. Under the EUROCONTROL Performance Review
+System, airport operators report movement data on a monthly basis
+\protect\hyperlink{ref-apdf_v1_2019}{{[}1{]}}.
+
+\hypertarget{conclusions}{%
+\section{Conclusions}\label{conclusions}}
+
+This paper aimed at exploring a data-driven approach to measuring
+arrival management based on open data.
+
+\hypertarget{reproducibility}{%
+\section*{Reproducibility}\label{reproducibility}}
+\addcontentsline{toc}{section}{Reproducibility}
+
+This paper has been built with the R/RStudio ecosystem. The draft
+manuscript and its supporting data preparatory steps are archived at
+https://github.com/rainer-rq-koelle/paper-2023-ICNS.
+
+The script to download the weekly global datasets are included. The
+cleaned trajectory data is stored at:
+\textless\textless tbd\textgreater\textgreater.
+
+\hypertarget{acknowledgment-and-disclaimer}{%
+\section{Acknowledgment and
+Disclaimer}\label{acknowledgment-and-disclaimer}}
+
+The authors thank the comments by XX YY ZZ.
+
+The views expressed are the authors' own and do not represent a policy
+or position of EUROCONTROL .
+
+\hypertarget{bibliography}{%
+\section*{References}\label{bibliography}}
+\addcontentsline{toc}{section}{References}
+
+\hypertarget{refs}{}
+\begin{CSLReferences}{0}{0}
+\leavevmode\vadjust pre{\hypertarget{ref-apdf_v1_2019}{}}%
+\CSLLeftMargin{{[}1{]} }%
+\CSLRightInline{EUROCONTROL, {``Eurocontrol {Specification} for
+{Operational ANS Performance Monitoring} - {Airport Operator Data
+Flow}.''} 2019 {[}Online{]}. Available:
+\url{https://www.eurocontrol.int/publication/eurocontrol-specification-operational-ans-performance-monitoring}}
+
+\end{CSLReferences}
 
 % done
 \end{document}
