@@ -73,7 +73,11 @@ data preparation
 
 data downloaded & script development, data cleaning
 
-## Open Data for Operational Performance Monnitoring
+The identification of the landing direction is based on a simple geospatial heuristic.
+Conceptually, aircraft are aligned with the runway (centerline) before landing.
+An aircraft is assigned to a landing runway based on the closeness of its pre-landing positions to the extended runway centerline.
+
+## Open Data for Operational Performance Monitoring
 
 ## Arrival Sequencing
 

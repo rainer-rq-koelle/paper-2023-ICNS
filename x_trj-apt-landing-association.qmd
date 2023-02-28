@@ -1,0 +1,189 @@
+---
+title: "Trajectory Landing Runway Assignment"
+format: html
+---
+
+Development version 
+
+Data preparatory step: associated a trajectory to a landing runway, including determining characteristic timestamps (e.g. gate/6NM time, landing time).
+
+```{r setup}
+# setup
+library(tidyverse)
+library(sf)
+
+# set default ggplot theme
+ggplot2::theme_set(ggplot2::theme_minimal())
+```
+
+The identification of the landing direction is based on a simple geospatial heuristic.    
+Conceptually, aircraft are aligned with the runway (centerline) before landing.
+An aircraft is assigned to a landing runway based on the closeness of its pre-landing positions to the extended runway centerline.
+
+Load test data set (BAWs @ EGLL)
+
+```{r}
+tst_fn  <- "tst-egll-baw.csv.gz"
+tst_pth <- here::here("data", tst_fn)
+baws <- read_csv(tst_pth, show_col_types = FALSE)
+```
+
+Data preparation
+
+```{r}
+source(here::here("R","coerce_unixepoch_to_datetime.R"))
+source(here::here("R", "cast_sf_utils.R"))
+
+# load EGLL environment
+rwys_egll <- read_csv("./data/rwys-EGLL.csv", show_col_types = FALSE)
+arp_egll  <- read_csv("./data/aip.csv", show_col_types = FALSE) |>
+  filter(ICAO == "EGLL", REF == "OSN-center")
+
+baws   <- baws |> coerce_unixepoch_to_datetime()
+
+baw236 <- baws |> filter(FLTID == "BAW236") |> 
+  trrrj::filter_positions_at_range(c(arp_egll$LON, arp_egll$LAT), dm = 1, dM = 205, lon = LON, lat = LAT) 
+
+baw236_ls <- baw236 |> cast_latlon_to_ls(.drop_coord = FALSE, .group_var = ICAO24)
+```
+
+
+```{r}
+ggplot() +
+  geom_sf(data = arp_egll |> cast_latlon_to_pts(), size = 3, color = "blue") +
+  geom_sf(data = rwys_egll |> cast_latlon_to_pts(), color = "red") +
+  geom_sf(data = baw236_ls) +
+  labs(title = "Overall trajectory - arrival path")
+```
+
+Zoom in on airport area
+
+```{r}
+baw236_landing <- baw236 |> 
+  trrrj::filter_positions_at_range(c(arp_egll$LON, arp_egll$LAT), 0, 20, lon = LON, lat = LAT)
+baw236_landing_ls <- baw236_landing |> cast_latlon_to_ls(.drop_coord = FALSE, .group_var = ICAO24)
+
+ggplot() +
+  geom_sf(data = arp_egll |> cast_latlon_to_pts(), size = 3, color = "blue") +
+  geom_sf(data = rwys_egll |> cast_latlon_to_pts(), color = "red") +
+  geom_sf(data = baw236_landing_ls) +
+  labs(title = "Arrival portion")
+```
+
+focus on runway
+
+```{r}
+# setup sf objects
+arp_pt   <- arp_egll |> cast_latlon_to_pts()
+rwys_pts <- rwys_egll |> cast_latlon_to_pts()
+rwys_ls  <- rwys_egll |> 
+  group_by(NAME) |> 
+  group_modify(.f = ~ cast_latlon_to_ls(.) ) |> 
+  st_as_sf()
+
+# utility function to create centerline
+rwy_ctr_line <- function(.rwy_df = aip, .ctrl_length = 10000){
+  df <- .rwy_df %>% 
+    filter(REF != "ARP") %>% 
+    select(REF, NAME, LAT, LON) %>% 
+    group_by(NAME) %>% 
+    mutate( LAT2 = case_when(!is.na(lag(LAT))  ~ lag(LAT)
+                            ,!is.na(lead(LAT)) ~ lead(LAT))
+           ,LON2 = case_when(!is.na(lag(LON))  ~ lag(LON)
+                            ,!is.na(lead(LON)) ~ lead(LON))
+          ) %>% 
+  # calculate "reverse" runway bearing with geosphere::bearingRhumb
+  mutate( RBRG  = geosphere::bearingRhumb(p1 = cbind(LON2, LAT2), p2 = cbind(LON, LAT))
+         )
+  
+  # determine "endpoint" of extended centerline at d = 10000 meters
+  tmp <- with(df, geosphere::destPointRhumb(cbind(LON, LAT), b= RBRG, d = .ctrl_length)) %>% 
+    as_tibble() %>% rename(LON3 = lon, LAT3 = lat)
+  
+  # combine and return
+  df <- df %>% bind_cols(tmp)
+  return(df)
+}
+
+# utility function to coerce extension points
+rwy_ctr_line_pts <- function(.rwy_ctr_line, .debug = FALSE){
+  # could not get pivot_longer work with multiple cols
+  tmp1 <- .rwy_ctr_line %>% select("REF":"LON")
+  
+  # include opposite runway threshold
+  tmp2 <- .rwy_ctr_line %>% select("REF","NAME", "LAT2","LON2") %>%
+    rename(LAT = LAT2, LON = LON2)
+  
+  # centerline end point determined beforehand
+  tmp3 <- .rwy_ctr_line %>% select("REF","NAME", "LAT3","LON3") %>%
+    rename(LAT = LAT3, LON = LON3)
+  
+  if(.debug == TRUE){ 
+    df <- bind_rows(tmp1, tmp2, tmp3)
+  }else{
+    df <- bind_rows(tmp1, tmp3)
+  }
+  
+  df <- df %>% arrange(REF, NAME)
+  return(df)  
+}
+
+cast_rwy_ctr_line_ls <- function(.rwys_df){
+  .rwys_df |> 
+  rwy_ctr_line() |> 
+  rwy_ctr_line_pts() |> 
+  cast_latlon_to_pts() |> 
+  cast_pts_to_ls(.group_var = REF)
+}
+rwy_centerline_ls <- cast_rwy_ctr_line_ls(rwys_egll)
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = arp_pt, size = 3, color = "blue") +
+  geom_sf(data = rwys_ls) +
+  geom_sf(data = rwys_pts, color = "red") +
+  geom_sf(data = rwy_centerline_ls, color = "green") +
+  geom_sf_text(data = rwy_centerline_ls, aes(label = REF)) +
+  geom_sf(data = baw236_landing_ls)
+```
+
+check proximity on final
+
+```{r}
+# spatial join (aka "overlay" with "within")
+# to identify most likely ~ closest runway (extended centerline-string)
+estimate_rwy <- function(.trj_pts, .rwy_ctrl_ls, .ctrl_offset = 1000){
+  # stop if not
+  tmp <- st_join( .rwy_ctrl_ls, .trj_pts
+                 , join = st_is_within_distance, dist = .ctrl_offset) %>%
+  st_drop_geometry() %>%        # keep just the "spatially joined" dataframe
+  na.omit() %>%                 # eliminate no hits
+  group_by(REF) %>%
+  summarise(N = n(), .groups = "drop") %>%
+  mutate( TOT   = sum(N, na.rm = TRUE)       # na.rm should not be necessary
+         ,TRUST = N / TOT)                   # share in case several runways
+  
+return(tmp)
+}
+```
+
+```{r}
+baw236_final_approach <- baw236 |> 
+  trrrj::filter_positions_at_range(c(arp_egll$LON, arp_egll$LAT), 0, 10, lon = LON, lat = LAT)
+# baw236_landing_ls <- baw236_landing |> cast_latlon_to_ls(.drop_coord = FALSE, .group_var = ICAO24)
+ggplot() +
+  geom_sf(data = arp_pt, size = 3, color = "blue") +
+  geom_sf(data = rwys_ls) +
+  geom_sf(data = rwys_pts, color = "red") +
+  geom_sf(data = rwy_centerline_ls, color = "green") +
+  geom_sf_text(data = rwy_centerline_ls, aes(label = REF)) +
+  geom_sf(data = baw236_final_approach |> cast_latlon_to_ls())
+```
+
+```{r}
+estimate_rwy(rwy_centerline_ls, baw236_final_approach |> cast_latlon_to_pts())
+```
+
+Try to understand why / how the closeness is calculated.
+Current implementation shows N=1 ?!? while ok, it should be multiple hits.
