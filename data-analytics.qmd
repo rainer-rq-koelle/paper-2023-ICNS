@@ -141,7 +141,7 @@ aip_apts <- tribble(
   ,"KORD", "OSN-center", 41.9785996,-87.9048004,672, "https://opensky-network.org/airport-profile?icao=KORD"
   ,"KJFK", "OSN-center", 40.6398010,-73.7789002, 13, "https://opensky-network.org/airport-profile?icao=KJFK"
 )
-write_csv(aip_apts, file = "./data/aip.csv")
+#write_csv(aip_apts, file = "./data/aip.csv")
 aip_apts
 ```
 
@@ -149,3 +149,39 @@ aip_apts
 Check for our study airport whether flights arrive (or depart)
 
 * trajectory of LAT/LON within a certain distance around an airport and below a certain altitude
+* we start with Heathrow, filtering for some arrivals
+
+> ds |> filter(grepl(pattern = "^BAW", x = FLTID ), ALT_B < 1000) |> distinct(FLTID)
+# A tibble: 761 × 1
+   FLTID  
+   <chr>  
+ 1 BAW112B
+ 2 BAW32  
+ 3 BAW237 
+ 4 BAW236 
+ 5 BAW16  
+ 6 BAW28  
+ 7 BAW34  
+ 8 BAW56  
+ 9 BAW262 
+10 BAW74 
+
+```{r}
+baws <- ds |> filter(grepl(pattern = "^BAW", x = FLTID )) |> 
+  group_by(FLTID) |> 
+  mutate(
+    MST = case_when(
+          TIME == min(TIME) ~ "START"
+          ,TIME == max(TIME) ~ "END")
+    )
+```
+```{r}
+picks <- c("BAW112B", "BAW236","BAW56","BAW262","BAW74")
+
+ggplot() +
+  geom_point(data = aip_apts |> filter(ICAO == "EGLL")
+             , aes(x = LON, y = LAT), size = 3, color = "blue") +
+  geom_point(data = baws |> filter(FLTID %in% picks)
+             , aes(x = LON, y = LAT, color = MST))
+```
+

@@ -3,6 +3,10 @@ title: "Extracting OSM data"
 format: html
 ---
 
+Development version 
+
+Data preparatory step: extract runway information from Openstreet Map (OSM).
+
 ```{r setup}
 # setup
 library(tidyverse)
@@ -89,9 +93,22 @@ ggplot() +
 
 ```{r}
 extract_rwy_linestrings <- function(.osm_sf){
-  rwys_ls <- .osm_sf$osm_lines |> filter(aeroway == "runway", is.na(runway))
-  message("number of runways: ", nrow(rwys_ls))
-  rwys_ls
+  
+ osm_values <- c("osm_id", "aeroway", "ref", "runway", "geometry")
+  
+  this_rwys_ls <- .osm_sf$osm_lines |>
+    dplyr::select(any_of(osm_values)) 
+  message("missing values: ", setdiff(osm_values, names(this_rwys_ls)))
+  
+  # fix EDDF no runway-tag!
+  if("runway" %in% setdiff(osm_values, names(this_rwys_ls))){
+    this_rwys_ls <- this_rwys_ls |> mutate(runway = NA_character_)
+  }
+  
+  this_rwys_ls <- this_rwys_ls |> 
+    dplyr::filter(aeroway == "runway", is.na(runway))
+  message("number of runways: ", nrow(this_rwys_ls))
+  this_rwys_ls
 }
 
 pt_to_latlon <- function(.pt_sf){
@@ -101,16 +118,215 @@ pt_to_latlon <- function(.pt_sf){
     dplyr::rename(LON = X, LAT = Y) 
 }
 
-extract_thresholds <- function(.rwy_ls){
-  thr1 <- lwgeom::st_startpoint(.rwy_ls) |> pt_to_latlon()
-  thr2 <- lwgeom::st_endpoint(  .rwy_ls) |> pt_to_latlon()
+extract_thresholds <- function(.rwys_ls, .drop_geometry = FALSE){
+  rwys <- .rwys_ls |> select(aeroway, ref, geometry)
+  thr1 <- lwgeom::st_startpoint(.rwys_ls) |> pt_to_latlon() |> rename(THR1_LAT = LAT, THR1_LON = LON)
+  thr2 <- lwgeom::st_endpoint(  .rwys_ls) |> pt_to_latlon() |> rename(THR2_LAT = LAT, THR2_LON = LON)
   
-  bind_rows(thr1, thr2)
+  bind_cols(rwys, thr1, thr2)  # todo: add drop_geometry
 }
 ```
 
 ```{r}
 rwys_ls <- extract_rwy_linestrings(q)
 extract_thresholds(rwys_ls)
+```
+
+get thresholds
+
+* sfnetworks has edge_azimuth() function, coerce bearing into degrees
+* calculate (rough) offset between bearing and runway identifier & select 
+
+```{r}
+rq <-  extract_thresholds(rwys_ls)
+
+rq2 <- rq |> 
+  sfnetworks::as_sfnetwork() |> 
+  sfnetworks::activate("edges") |> 
+  dplyr::mutate(  
+      BRG = sfnetworks::edge_azimuth()
+    , BRG = units::set_units(BRG, "degrees")
+    , BRG = (as.numeric(BRG) + 360) %% 360
+         
+    , REF1 = stringr::str_split_i(ref, pattern = "/",1)
+    , REF2 = stringr::str_split_i(ref, pattern = "/",2)
+         
+    , RWY_1 = if_else( abs( (parse_number(REF1) * 10) - BRG ) < 30, REF1, REF2)
+    , RWY_2 = if_else( abs( (parse_number(REF2) * 10) - BRG ) > 30, REF2, REF1)
+         )
+rq2
+```
+
+
+Package output
+
+```{r}
+apt <- "EGKK"
+
+# pull out edges/runways 
+rq3 <- rq2 |> sfnetworks::activate("edges") |> st_as_sf() |> sf::st_drop_geometry()
+
+rwy_ends <-
+  bind_cols(rq3 |> select(REF = RWY_1, LAT = THR1_LAT, LON = THR1_LON, NAME = ref)) |> 
+  bind_rows(rq3 |> select(REF = RWY_2, LAT = THR2_LAT, LON = THR2_LON, NAME = ref)) |> 
+  mutate(ICAO = apt) |> select(ICAO, everything())
+rwy_ends
+```
+
+```{r}
+ggplot() + 
+  geom_sf(data = rwys_ls) +
+  geom_point(data = rwy_ends, aes(x = LON, y = LAT)) +
+  geom_text(data = rwy_ends, aes(x = LON, y = LAT, label = REF), vjust = -0.5)
+```
+
+Let's go for Heathrow
+
+```{}
+# fails from github! ### source("./R/xhelper_read_excel_from_url.R")
+url   <- "https://github.com/euctrl-pru/airport-dashboard/blob/master/data/APT_BBOX.xlsx"
+# github urls follow the pattern: https://raw.github.com/user/repository/branch/file.name
+github_download_url <- "https://raw.github.com/euctrl-pru/airport-dashboard/master/data/APT_BBOX.xlsx"
+
+## bboxs <- read_excel_from_url(url)
+download.file(github_download_url, destfile = "./data/airport-bbox.xlsx", mode = "wb")
+bboxs <- readxl::read_excel("./data/airport-bbox.xlsx")
+```
+
+```{r}
+query_osm_bbox <- function(.bb_lonlat){
+  q <- opq(bbox = .bb_lonlat) %>% 
+    add_osm_feature(
+      key = "aeroway"
+      ,value =c("aerodrome", "apron", "control_tower", "gate", "hangar"
+              ,"helipad", "runway", "taxiway", "terminal") ) %>% 
+    osmdata_sf() 
+}
+
+plot_airport <- function(.osm_apt, .apt=NULL){
+  g <- ggplot() +
+  geom_sf(data = .osm_apt$osm_polygons
+          ,inherit.aes = FALSE
+          ,color = "lightblue"
+          #,fill  = "lightblue"
+          ) +
+  geom_sf(data = .osm_apt$osm_lines %>% filter(aeroway != "runway")
+          , color = "grey"
+          ) +
+  geom_sf(data = .osm_apt$osm_lines %>% filter(aeroway == "runway"),
+          inherit.aes = FALSE,
+          color = "black",
+          size = 2 #.4
+          ,alpha = .8) +
+  theme_void() +
+  labs(title = .apt)
+ return(g)
+}
+
+coerce_bbox_string_to_numeric_vector <- function(.bbox_string){
+  .bbox_string |> 
+    str_split_1(pattern = ",") |> 
+    as.numeric()
+}
+```
+
+```{r}
+egll_bb_lonlat <- bboxs |> 
+  filter(AIRPORT == "EGLL") |> pull(BBOX) |> 
+  coerce_bbox_string_to_numeric_vector()
+
+osm_apt <- query_osm_bbox(egll_bb_lonlat)
+
+plot_airport(osm_apt)
+```
+
+Check for runway ends
+
+```{r}
+rwys_ls <- extract_rwy_linestrings(osm_apt)
+extract_thresholds(rwys_ls)
+```
+
+```{r}
+associate_rwy_brg <- function(.thrs_ls){
+  .thrs_ls |> 
+  sfnetworks::as_sfnetwork() |> 
+  sfnetworks::activate("edges") |> 
+  dplyr::mutate(  
+      BRG = sfnetworks::edge_azimuth()
+    , BRG = units::set_units(BRG, "degrees")
+    , BRG = (as.numeric(BRG) + 360) %% 360
+         
+    , REF1 = stringr::str_split_i(ref, pattern = "/",1)
+    , REF2 = stringr::str_split_i(ref, pattern = "/",2)
+         
+    , RWY_1 = if_else( abs( (parse_number(REF1) * 10) - BRG ) < 30, REF1, REF2)
+    , RWY_2 = if_else( RWY_1 == REF1, REF2, REF1)
+         )
+}
+# rq2 <- rq |> associate_rwy_brg()
+# rq2
+
+pull_out_runway_info <- function(.thrs_brgs, .apt = apt){
+# pull out edges/runways 
+ tmp <- .thrs_brgs |> 
+   sfnetworks::activate("edges") |> 
+   sf::st_as_sf() |> 
+   sf::st_drop_geometry()
+
+ rwy_ends <-
+  bind_cols(tmp |> select(REF = RWY_1, LAT = THR1_LAT, LON = THR1_LON, NAME = ref)) |> 
+  bind_rows(tmp |> select(REF = RWY_2, LAT = THR2_LAT, LON = THR2_LON, NAME = ref)) |> 
+  mutate(ICAO = .apt) |> select(ICAO, everything())
+ rwy_ends
+}
+```
+
+Executed for 
+
+* EGLL
+* EHAM
+* EGKK
+* EDDF
+* WSSS
+* KATL, KORD, KJFK
+* SBGR
+
+```{r}
+apt <- "SBGR"
+
+# European airports
+bboxs <- readxl::read_excel("./data/airport-bbox.xlsx")
+# international airports
+bboxs_int <- readxl::read_excel("./data/airport-intnl-bbox.xlsx")
+bboxs <- bind_rows(bboxs, bboxs_int)
+
+bb_lonlat <- bboxs |> 
+  filter(AIRPORT == apt) |> pull(BBOX) |> 
+  coerce_bbox_string_to_numeric_vector()
+
+osm_apt <- query_osm_bbox(bb_lonlat)
+
+rwys_ls <- extract_rwy_linestrings(osm_apt)
+
+if(apt == "EDDF"){
+  rwys_ls$ref <- gsub(pattern = "^18$", replacement = "18/36", x = rwys_ls$ref)
+}
+
+rwy_ends <-  rwys_ls |> 
+  extract_thresholds() |> 
+  associate_rwy_brg() |> 
+  pull_out_runway_info()
+
+write_csv(rwy_ends, file = paste0("./data/rwys-",apt,".csv"))
+rwy_ends
+```
+
+Visual check
+
+```{r}
+plot_airport(osm_apt) +
+  geom_point(data = rwy_ends, aes(x = LON, y = LAT)) +
+  geom_text( data = rwy_ends, aes(x = LON, y = LAT, label = REF), vjust = -0.3)
 ```
 
