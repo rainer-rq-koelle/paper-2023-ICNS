@@ -139,26 +139,39 @@ rwy_centerline_ls <- cast_rwy_ctr_line_ls(rwys_egll)
 ```
 
 ```{r}
-ggplot() +
+apt_arrival_plot <- ggplot() +
   geom_sf(data = arp_pt, size = 3, color = "blue") +
   geom_sf(data = rwys_ls) +
   geom_sf(data = rwys_pts, color = "red") +
   geom_sf(data = rwy_centerline_ls, color = "green") +
-  geom_sf_text(data = rwy_centerline_ls, aes(label = REF)) +
+  geom_sf_text(data = rwy_centerline_ls, aes(label = REF)) 
+
+apt_arrival_plot +
   geom_sf(data = baw236_landing_ls)
 ```
 
 check proximity on final
 
 ```{r}
-# spatial join (aka "overlay" with "within")
+#' (Gu)estimate the arrival runway based on alignment of landing trajectory points and extended runway centerline
+#' 
+#'spatial join (aka "overlay" with "within")
 # to identify most likely ~ closest runway (extended centerline-string)
+#'
+#' @param .trj_pts 
+#' @param .rwy_ctrl_ls 
+#' @param .ctrl_offset 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 estimate_rwy <- function(.trj_pts, .rwy_ctrl_ls, .ctrl_offset = 1000){
   # stop if not
   tmp <- st_join( .rwy_ctrl_ls, .trj_pts
                  , join = st_is_within_distance, dist = .ctrl_offset) %>%
   st_drop_geometry() %>%        # keep just the "spatially joined" dataframe
-  na.omit() %>%                 # eliminate no hits
+ # na.omit() %>%                 # eliminate no hits
   group_by(REF) %>%
   summarise(N = n(), .groups = "drop") %>%
   mutate( TOT   = sum(N, na.rm = TRUE)       # na.rm should not be necessary
@@ -166,24 +179,88 @@ estimate_rwy <- function(.trj_pts, .rwy_ctrl_ls, .ctrl_offset = 1000){
   
 return(tmp)
 }
+
+
+#' Assign most likely arrival landing
+#'
+#' @param .rwy_hit_score 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' #' \dontrun{
+#' }
+arrival_runway_assignment <- function(.rwy_hit_score){
+  .rwy_hit_score |> 
+    dplyr::arrange(desc(N)) |> 
+    dplyr::mutate(
+      COMMENT = paste0("landing runway: ", REF," trust-Level (hits: ", N, "): ", TRUST)) |> 
+    dplyr::filter(row_number() == 1)
+}
 ```
 
 ```{r}
-baw236_final_approach <- baw236 |> 
+final_approach_trj <- baw236 |> 
   trrrj::filter_positions_at_range(c(arp_egll$LON, arp_egll$LAT), 0, 10, lon = LON, lat = LAT)
-# baw236_landing_ls <- baw236_landing |> cast_latlon_to_ls(.drop_coord = FALSE, .group_var = ICAO24)
-ggplot() +
-  geom_sf(data = arp_pt, size = 3, color = "blue") +
-  geom_sf(data = rwys_ls) +
-  geom_sf(data = rwys_pts, color = "red") +
-  geom_sf(data = rwy_centerline_ls, color = "green") +
-  geom_sf_text(data = rwy_centerline_ls, aes(label = REF)) +
-  geom_sf(data = baw236_final_approach |> cast_latlon_to_ls())
+
+final_approach_trj_pts <- final_approach_trj |> cast_latlon_to_pts()
+
+landing_runway <- estimate_rwy(final_approach_trj_pts, rwy_centerline_ls) |> 
+  arrival_runway_assignment()
+landing_runway <- landing_runway |> mutate(LAT = 51.5, LON = -0.45) 
+
+apt_arrival_plot +
+  geom_sf(data = final_approach_trj_pts) +
+  labs(subtitle = landing_runway$COMMENT)
+```
+production pipeline
+
+TO----------------DOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+
+* multiple "landing trajectories"
+* iterate over landing trajectories
+
+```{r}
+final_trjs <- baws |> 
+  trrrj::filter_positions_at_range(c(arp_egll$LON, arp_egll$LAT), 0, 10, lon = LON, lat = LAT)
+
+final_trjs_pts <- final_trjs |> cast_latlon_to_pts()
+
+ldg_rwy <- final_trjs_pts |> group_by(ICAO24) |> 
+  group_modify(.f = ~ estimate_rwy(.x, rwy_centerline_ls) |> arrival_runway_assignment())
+ldg_rwy
+```
+
+
+WRONG RUNWAY ASSIGNMENT as filtering does not assure LAT/LONs on final!
+
+```{r}
+picks <-  c("400615")
+
+apt_arrival_plot +
+  geom_sf(data = final_trjs_pts |> filter(ICAO24 %in% picks))
 ```
 
 ```{r}
-estimate_rwy(rwy_centerline_ls, baw236_final_approach |> cast_latlon_to_pts())
+baw74_landing <- baws |> filter(ICAO24 == "400615") |>  
+  trrrj::filter_positions_at_range(c(arp_egll$LON, arp_egll$LAT), 0, 20, lon = LON, lat = LAT)
+baw74_landing_ls <- baw74_landing |> cast_latlon_to_ls(.drop_coord = FALSE, .group_var = ICAO24)
+
+apt_arrival_plot +
+  geom_sf(data = baw74_landing_ls)
 ```
 
-Try to understand why / how the closeness is calculated.
-Current implementation shows N=1 ?!? while ok, it should be multiple hits.
+NEED FOR TRAJECTORY SEGMENTATION / PHASE ASSOCIATION
+
+* trajectory = (time-)ordered set of 4D positions
+* check
+  + runway-end crossing  <-- arrival or departure
+  + airport box          <-- arrival or departure
+* other milestone
+  + gate/6NM final
+  + extended runway box (e.g. 15NM)
+  + other characteristic milestones
+* phase points
+  + top of decent (/ climb)
+  + ...
