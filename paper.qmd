@@ -73,6 +73,13 @@ data preparation
 
 data downloaded & script development, data cleaning
 
+### Trajectory Flight Phase Segmentation & Milestone
+
+Different approaches exists to detect and describe aircraft flight phases, e.g. recent machine learning algorithm [@sun2017flightphase].
+This paper implements a heuristic approach with a focus on the detection of arrival traffic at the study airports.
+
+### Landing Runway Identification
+
 The identification of the landing direction is based on a simple geospatial heuristic.
 Conceptually, aircraft are aligned with the runway (centerline) before landing.
 An aircraft is assigned to a landing runway based on the closeness of its pre-landing positions to the extended runway centerline.

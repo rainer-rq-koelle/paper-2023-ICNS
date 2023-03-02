@@ -254,9 +254,29 @@ data preparation
 
 data downloaded \& script development, data cleaning
 
-\hypertarget{open-data-for-operational-performance-monnitoring}{%
+\hypertarget{trajectory-flight-phase-segmentation-milestone}{%
+\subsubsection{Trajectory Flight Phase Segmentation \&
+Milestone}\label{trajectory-flight-phase-segmentation-milestone}}
+
+Different approaches exists to detect and describe aircraft flight
+phases, e.g.~recent machine learning algorithm
+\protect\hyperlink{ref-sun2017flightphase}{{[}1{]}}. This paper
+implements a heuristic approach with a focus on the detection of arrival
+traffic at the study airports.
+
+\hypertarget{landing-runway-identification}{%
+\subsubsection{Landing Runway
+Identification}\label{landing-runway-identification}}
+
+The identification of the landing direction is based on a simple
+geospatial heuristic. Conceptually, aircraft are aligned with the runway
+(centerline) before landing. An aircraft is assigned to a landing runway
+based on the closeness of its pre-landing positions to the extended
+runway centerline.
+
+\hypertarget{open-data-for-operational-performance-monitoring}{%
 \subsection{Open Data for Operational Performance
-Monnitoring}\label{open-data-for-operational-performance-monnitoring}}
+Monitoring}\label{open-data-for-operational-performance-monitoring}}
 
 \hypertarget{arrival-sequencing}{%
 \subsection{Arrival Sequencing}\label{arrival-sequencing}}
@@ -273,7 +293,7 @@ At the time of writing no global open flight table exists. For this
 study, we validated the sample with reference data available to the
 Performance Review Unit. Under the EUROCONTROL Performance Review
 System, airport operators report movement data on a monthly basis
-\protect\hyperlink{ref-apdf_v1_2019}{{[}1{]}}.
+\protect\hyperlink{ref-apdf_v1_2019}{{[}2{]}}.
 
 \hypertarget{conclusions}{%
 \section{Conclusions}\label{conclusions}}
@@ -294,8 +314,9 @@ cleaned trajectory data is stored at:
 \textless\textless tbd\textgreater\textgreater.
 
 \hypertarget{acknowledgment-and-disclaimer}{%
-\section{Acknowledgment and
+\section*{Acknowledgment and
 Disclaimer}\label{acknowledgment-and-disclaimer}}
+\addcontentsline{toc}{section}{Acknowledgment and Disclaimer}
 
 The authors thank the comments by XX YY ZZ.
 
@@ -308,8 +329,15 @@ or position of EUROCONTROL .
 
 \hypertarget{refs}{}
 \begin{CSLReferences}{0}{0}
-\leavevmode\vadjust pre{\hypertarget{ref-apdf_v1_2019}{}}%
+\leavevmode\vadjust pre{\hypertarget{ref-sun2017flightphase}{}}%
 \CSLLeftMargin{{[}1{]} }%
+\CSLRightInline{J. Sun, J. Ellerbroek, and J. Hoekstra, {``Flight
+extraction and phase identification for large automatic dependent
+surveillance\textendash broadcast datasets,''} \emph{Journal of
+Aerospace Information Systems}, vol. 14, no. 10, pp. 566--572, 2017. }
+
+\leavevmode\vadjust pre{\hypertarget{ref-apdf_v1_2019}{}}%
+\CSLLeftMargin{{[}2{]} }%
 \CSLRightInline{EUROCONTROL, {``Eurocontrol {Specification} for
 {Operational ANS Performance Monitoring} - {Airport Operator Data
 Flow}.''} 2019 {[}Online{]}. Available:

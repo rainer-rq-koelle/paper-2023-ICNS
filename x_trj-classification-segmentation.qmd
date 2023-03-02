@@ -1,0 +1,160 @@
+---
+title: "Trajectory Classification"
+format: html
+---
+
+```{r setup}
+# setup
+library(tidyverse)
+library(sf)
+
+source(here::here("R", "level_segments_check.r"))
+
+# set default ggplot theme
+ggplot2::theme_set(ggplot2::theme_minimal())
+```
+
+DEVELOPMENT VERION
+
+# Overview
+
+We conceptualise 
+
+* a **trajectory** as the time-ordered sequence of 4D positions of a flight;
+* a **flight** is an air transport movement from a departure aerodrome to its destination aerodrome;
+* flights could include segments with specific operations (e.g. military flights: military exercise area, refueling, all flights: flight maneuvers, holding, low approach/touch-and-go)
+* outside of these specific operations, flights progress through phases: (i) parking, (ii) taxi-out, including take-off roll, (iii) initial climb-out, (iv) climb-out, (v) en-route, (vi) decent, (vii) final approach, (viii) taxi-in to parking position.
+
+download sample = state vector data (4D positions)
+
+==> split flights into DA(I)O ~ ODA
+
+```{mermaid}
+%%| fig-width: 6
+flowchart LR
+  OSN[(Opensky \nNetwork)] 
+  OSN --> A[Data \nExtraction] 
+  A --> FP(Flight Phases)
+  A --> B(Arrival \nTrajectories)
+  FP -.- B
+```
+
+
+
+
+# Model Development 
+
+Load test data set (BAWs @ EGLL)
+
+```{r}
+tst_fn  <- "tst-egll-baw.csv.gz"
+tst_pth <- here::here("data", tst_fn)
+baws <- read_csv(tst_pth, show_col_types = FALSE)
+
+if(class(baws$TIME) == "numeric") baws <- baws |> coerce_unixepoch_to_datetime()
+
+# clean trajectory
+baws <- baws |> Alt_Outlier_filter(.alt_var = ALT_B)
+```
+
+TODO = outlier filter works well when airborne, ground jumps not picked up
+
+```{r}
+baws |> 
+ggplot() +
+  geom_point(aes(x = TIME, y = ALT_B, color = FLTID))
+```
+
+## Flight Table and Milestone Table
+
+A flight can be characterised by a series of milestones.    
+Specific milestones (and supporting data) can be extracted in form of a flight table.
+
+Unique flight identification:
+
+An aircraft (identifiable by its ICAO24 address) can perform multiple flights on a given day.
+Flights may enter/leave the coverage area.
+Conceptually - and within the studied context of flights operating at European airports / night flying restrictions - the associated of the date of flight and ICAO24 address including the FLTID can serve as a unique key.
+
+Milestone table allows for combining flights on day n and n+1, as characteristic milestones and their time offset allow for an association (and subsequent cleaning of the UID - not part of this study).
+
+### Identify "flights" 
+
+On the basic level, flights are detected between START (first seen) and END (last seen) of an ICAO24 - typically - using a single FLTID
+
+```{r}
+identify_legs <- function(.trjs, .uid = ICAO24, .max_step = 300){
+  .trjs |> 
+    dplyr::group_by({{.uid}}) |> 
+    dplyr::arrange(TIME) |> 
+    dplyr::mutate(
+       STEP = difftime(TIME, lag(TIME, default = dplyr::first(TIME))) |> as.numeric()
+      ,LEG  = cumsum(STEP > .max_step)
+      ,N_ID = length(unique(FLTID))
+      ) |> 
+    ungroup()
+} 
+make_uid <- function(.trjs_legs){
+  .trjs_legs |> 
+    dplyr::mutate(
+       DOF = lubridate::date(TIME) 
+      ,UID = paste(ICAO24, DOF, LEG, sep = "-")
+      ) |> 
+    dplyr::select(UID, ICAO24, TIME, LAT, LON, ALT_B, FLTID, everything())
+}
+
+init_flight_table <- function(.trjs_uid){
+  this_flt <- .trjs_uid  |> 
+    dplyr::summarise(
+       UID = unique(UID)
+      ,FLTID = unique(FLTID) 
+      ,N   = n()
+      ,FIRST = min(TIME), LAST = max(TIME), DUR = difftime(LAST, FIRST, units = "min")
+      ,.by = UID
+      ) 
+}
+
+init_milestone_table <- function(.trj_uid){
+  this_mst <- .trj_uid  |> 
+    dplyr::slice(c(1,n())) |> 
+    dplyr::mutate(MST = c("START","STOP")) |> 
+    dplyr::select(ICAO24, FLTID, TIME, LAT, LON, ALT_B, MST)
+}
+```
+
+
+```{r}
+mst <- baws |> identify_legs() |> make_uid() |> 
+  group_by(UID) |> 
+  group_modify(.f = ~ init_milestone_table(.x))
+```
+
+DETECT LEVEL SEGMENTS
+TOC / TOD
+
+```{r}
+baws |> filter(FLTID == "BAW236") |> check_level_flight(.alt_var = ALT_B) |> ggplot() + geom_point(aes(x = TIME, y = ALT_B, color = as.factor(LEVEL)))
+```
+
+DETECT AIRPORT BOX
+
+load airport environment
+
+```{r}
+# load EGLL environment
+rwys_egll <- read_csv("./data/rwys-EGLL.csv", show_col_types = FALSE)
+arp_egll  <- read_csv("./data/aip.csv", show_col_types = FALSE) |>
+  filter(ICAO == "EGLL", REF == "OSN-center")
+
+rwys_egll_pts <- rwys_egll |> cast_latlon_to_pts()
+rwys_egll_pts_buf <- rwys_egll_pts |> sf::st_buffer(dist = 500)
+rwys_egll_box <- rwys_egll_pts_buf |> sf::st_union() |> sf::st_convex_hull()
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = rwys_egll_pts) +
+  geom_sf(data = rwys_egll_pts_buf, color = "blue", fill = NA) +
+  geom_sf(data = rwys_egll_box, color = "lightgreen", fill = NA)
+```
+
