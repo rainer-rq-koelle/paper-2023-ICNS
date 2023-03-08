@@ -3,6 +3,10 @@ title: "Data analytics"
 format: pdf
 ---
 
+TODO meter to feet coerciion
+1m = 100cm/(2.54cm/in)/(12in/ft) = 3.280839895ft
+
+
 ```{r setup, include=FALSE}
 library(tidyverse)
 

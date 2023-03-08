@@ -124,7 +124,8 @@ init_milestone_table <- function(.trj_uid){
 
 
 ```{r}
-mst <- baws |> identify_legs() |> make_uid() |> 
+baws <- baws |> identify_legs() |> make_uid() 
+mst <- baws |> 
   group_by(UID) |> 
   group_modify(.f = ~ init_milestone_table(.x))
 ```
@@ -155,6 +156,74 @@ rwys_egll_box <- rwys_egll_pts_buf |> sf::st_union() |> sf::st_convex_hull()
 ggplot() +
   geom_sf(data = rwys_egll_pts) +
   geom_sf(data = rwys_egll_pts_buf, color = "blue", fill = NA) +
-  geom_sf(data = rwys_egll_box, color = "lightgreen", fill = NA)
+  geom_sf(data = rwys_egll_box, color = "lightgreen", fill = NA) 
+```
+
+BAW74 - ICAO24 c("400615")
+
+checking first for overhead threshold
+
+```{r}
+fb <- baws |> filter(ICAO24 %in% c("400615")) |> cast_latlon_to_pts(.drop_coord = FALSE)
+
+over_thr <- fb[rwys_egll_pts_buf,]
+
+ggplot() +
+  geom_sf(data = rwys_egll_pts, size = 3) +
+  geom_sf(data = rwys_egll_pts_buf, color = "blue", fill = NA) +
+  geom_sf(data = over_thr, color = "yellow")
+```
+
+trajectory points that fall within buffered threshold polygons
+
+```{r}
+my_trj <- fb
+my_thres_buf <- rwys_egll_pts_buf
+
+check_thr_mst <- function(.trj, .thres_buf){
+  this_mst <- st_join(.trj, .thres_buf["REF"], left = FALSE) |> 
+  select(ICAO24, FLTID, TIME, LAT, LON, ALT_B, REF) |> 
+  mutate(MST = "THR") |> 
+  mutate(
+        LEAD = geometry[row_number() + 1]
+      , DIST = st_distance(geometry, LEAD, by_element = T)
+      , DIST = if_else(is.na(DIST), 0, as.numeric(DIST))   #correct for lead/NA
+      , CUM_DIST = cumsum(DIST)
+      , RLEID = consecutive_id(CUM_DIST)
+    ) |> 
+  sf::st_drop_geometry() |> 
+  filter(TIME == min(TIME), .by = RLEID)
+  return(this_mst)
+}
+
+thr_mst <- check_thr_mst(my_trj, my_thres_buf)
+thr_mst
+```
+
+
+```{r}
+baws |> filter(ICAO24 == "40073e") |> cast_latlon_to_pts(.drop_coord = FALSE) |> sf::st_crop(xmin = -1, xmax = 0, ymin = 51.2, ymax = 51.6) |>  ggplot() + geom_point(aes(x = LON, y = LAT)) + geom_sf(data = rwys_egll_pts_buf) 
+```
+
+```{r}
+baw262 <- baws |> filter(ICAO24 == "40073e")
+baw262_ls <- baw262 |> cast_latlon_to_ls() |> sf::st_crop(xmin = -0.5, xmax = 0, ymin = 51.2, ymax = 51.6)
+
+ggplot() +
+  geom_sf(data = rwys_egll_box) +
+  geom_sf(data = baw262_ls)
+  
+```
+
+```{r}
+box_poly_sf  <- rwys_egll_box |> sf::st_as_sf() |> mutate(REF = "EGLL-box") |> rename(geometry = x)
+this_trj_pts <- baw262 |> cast_latlon_to_pts(.drop_coord = FALSE)
+
+# test with one
+baw262 <- sf::st_join(this_trj_pts, box_poly_sf)
+
+key_mst <- baw262 |> filter(MST %in% c("START","END")) |> 
+  select(UID, ICAO24, TIME, FLTID, LAT, LON, ALT_B, MST, REF)
+key_mst
 ```
 
