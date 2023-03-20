@@ -8,7 +8,8 @@ format: html
 library(tidyverse)
 library(sf)
 
-source(here::here("R", "level_segments_check.r"))
+source(here::here("R", "level_segments_check.R"))
+source(here::here("R", "altitude_outlier_filter.R"))
 
 # set default ggplot theme
 ggplot2::theme_set(ggplot2::theme_minimal())
@@ -207,12 +208,13 @@ baws |> filter(ICAO24 == "40073e") |> cast_latlon_to_pts(.drop_coord = FALSE) |>
 
 ```{r}
 baw262 <- baws |> filter(ICAO24 == "40073e")
-baw262_ls <- baw262 |> cast_latlon_to_ls() |> sf::st_crop(xmin = -0.5, xmax = 0, ymin = 51.2, ymax = 51.6)
+baw262_ls <- baw262 |> 
+  cast_latlon_to_ls() |> 
+  sf::st_crop(xmin = -0.5, xmax = 0, ymin = 51.2, ymax = 51.6)
 
 ggplot() +
   geom_sf(data = rwys_egll_box) +
   geom_sf(data = baw262_ls)
-  
 ```
 
 ```{r}
@@ -225,5 +227,98 @@ baw262 <- sf::st_join(this_trj_pts, box_poly_sf)
 key_mst <- baw262 |> filter(MST %in% c("START","END")) |> 
   select(UID, ICAO24, TIME, FLTID, LAT, LON, ALT_B, MST, REF)
 key_mst
+```
+
+
+
+## Start data preparation
+
+work with dataset for a day
+
+```{r}
+source("./R/osn_dumps.R")
+source("./R/osn_read_tardump.R")
+source("./R/osn_make_nice_names.R")
+source("./R/coerce_meter_to_feet.R")
+```
+
+```{r}
+#| message: false
+pth_to_dumps <- "../__DATA/OSN-dumps"
+ptn <- "2019-08-01"
+
+# list downloaded dumps
+fns <- list.files(path = pth_to_dumps, pattern = ptn, full.names = TRUE)
+
+# load list of chosen dumps
+ds  <- fns |> 
+  purrr::map_dfr(.f = read_osn_tar_file) |> 
+  make_nice_names_osn() |> 
+  mutate(ALT_B = coerce_meter_to_feet(ALT_B))
+```
+
+* filter pts within airport box (join per day runs for ~ 5mins)
+
+```{r}
+# EGLL airport box
+box_sf  <- rwys_egll_box |> sf::st_as_sf() |> mutate(REF = "EGLL-box") |> rename(geometry = x)
+
+# spatial subsetting, check alt, get ICAO24
+# command x[y, ] is identical to x[y, , op = st_intersects]
+seen_at_airport <- function(.pts, .poly_sf, .alt_threshold = 1000, .drop_coord = FALSE,...) {
+  ds_pts  <- .pts |> cast_latlon_to_pts(.drop_coord = .drop_coord)
+  # spatial subsetting, check alt, get ICAO24
+  # command x[y, ] is identical to x[y, , op = st_intersects]
+  inbox   <- ds_pts[.poly_sf,] |> 
+    dplyr::filter(ALT_B < .alt_threshold)
+  return(inbox)
+}
+```
+
+```{r}
+at_egll <- ds |> seen_at_airport(box_sf) 
+at_egll <- at_egll |> mutate(SEEN = "AT EGLL") |> 
+  summarise(BOX_MIN)
+```
+
+at egll with is.na(FLTID)
+# A tibble: 214 × 1
+   ICAO24
+   <chr> 
+ 1 4951c7
+ 2 400941
+ 3 4ca13d
+ 4 4006b0
+ 5 3c65cd
+ 6 406a3e
+ 7 4b17fc
+ 8 406ae3
+ 9 4010dd
+10 4009da
+
+Load validation data set
+
+```{}
+egll_fact <- read_csv2("~/RProjects/__DATA/EGLL/EGLL_2019_FACT.csv")
+egll_fact <- egll_fact |> 
+  select(FLTID = AP_C_FLTID, REG = AP_C_REG, ADEP = ADEP_ICAO, ADES = ADES_ICAO
+         ,MVT_TIME = MVT_TIME_UTC, BLOCK_TIME = BLOCK_TIME_UTC, PHASE = SRC_PHASE
+         ,TYPE = ARCTYP, CLASS = AC_CLASS, RWY = AP_C_RWY, STND = AP_C_STND)
+write_csv(egll_fact, "./data/validation-EGLL-2019.csv.gz")
+```
+```{r}
+egll_fact <- read_csv("./data/validation-EGLL-2019.csv.gz", show_col_types = FALSE) |> 
+  mutate(across(.cols = contains("_TIME"), .fns = lubridate::dmy_hms))
+
+egll_20190801 <- egll_fact |> filter(lubridate::date(MVT_TIME) == lubridate::date(ptn)) |> 
+  mutate(SEEN_OSN = FLTID %in% at_egll$FLTID)
+```
+
+```{r}
+egll_20190801 |> summarise(MVTS = n(), .by = PHASE) |> 
+  ggplot() + 
+  geom_col( aes(x = PHASE, y = MVTS)) +
+  geom_text(aes(x = PHASE, y = MVTS, label = MVTS), vjust = 1.5, color = "white") +
+  labs(title = "EGLL - movement count - 20190801", x = NULL, y = NULL)
 ```
 

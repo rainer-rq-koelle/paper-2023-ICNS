@@ -1,0 +1,70 @@
+---
+title: "Brazil"
+format: html
+---
+
+```{r}
+library(tidyverse)
+```
+
+
+Unfortunately https://aisweb.decea.mil.br/ was down (20.03.).    
+Google search offered an AIP pdf from 2017 (hope that no major changes took place - check with DECEA).
+
+Get airport information from AIP
+
+```{r}
+knitr::include_graphics("./figures/aip-snapshot-SBGR.png")
+```
+
+use measurements package to calculate decimal degrees (rounded to 6 digits)
+measurements::conv_unit("046 28 23", "deg_min_sec", "dec_deg")
+
+SBGR: ARP 232608S / 0462823W
+
+bboxfinder - box lng/lat - min/max
+bounding box SBGR: -46.500975,-23.460242,-46.435372,-23.416276
+
+```{r}
+rwys_sbgr <- tribble(
+   ~ICAO  , ~REF , ~LAT      , ~LON      , ~NAME    , ~ELEV
+  , "SBGR", "ARP", -23.435555, -46.473056, "ARP"    , 2461
+  , "SBGR", "O9L", -23.434281, -46.483361, "09L/27R", 2444
+  , "SBGR", "27R", -23.424894, -46.448619, "09L/27R", 2440
+  , "SBGR", "09R", -23.438797, -46.487027, "09R/27L", 2450
+  , "SBGR", "27L", -23.431189, -46.458855, "09R/27L", 2445
+)
+
+#write_csv(rwys_sbgr, "./data/rwys-SBGR.csv")
+```
+
+
+```{r}
+#sbgr_arp   <- c(rwys_sbgr$LON, rwys_sbgr$LAT)
+sbgr_200NM <- trrrj::polygon_at_distance(c(8.570556, 50.03333), d = 205)
+```
+
+
+
+
+## Load OSN data - Monday dump
+
+```{r}
+# load helper scripts to download and store OSN data
+source("./R/osn_dumps.R")
+source("./R/osn_read_tardump.R")
+source("./R/osn_make_nice_names.R")
+```
+```{r}
+#| message: false
+pth_to_dumps <- "../__DATA/OSN-MondayDumps"
+ptn <- "2022-05-09"
+
+# list downloaded dumps
+fns <- list.files(path = pth_to_dumps, pattern = ptn, full.names = TRUE)
+
+# load list of chosen dumps
+bra  <- fns |> 
+  purrr::map_dfr(.f = read_osn_tar_file) |> 
+  make_nice_names_osn()
+```

@@ -45,6 +45,25 @@ environments: [mytable, mywidetable]
 
 # Introduction
 
+Operational efficiency is a key element of addressing aviation's contribution to climate change.
+<!-- verbatim copy --> Emissions may increase due to the expected growth in international air traffic until lower emitting technologies and fuels and other mitigating measures are developed and deployed ..
+<!-- end copy --> ICAO adopted at its 41st Assembly a long-term aspirational goal for international aviation [@icao2022].
+In support to the Paris Agreement, the goal is to achieve net-zero carbon emissions by 2050.
+
+Levers for fuel reduction:
+
+\* operational efficiency
+
+\* market-based measures
+
+\* sustainable aviation fuel
+
+\* new aircraft propulsion and airframes
+
+A wider use and pick-up of sustainable aviation fuel, and new aircraft propulsion technologies or aircraft design requires further research.
+
+Despite the introduction of an initial market-based mechanism, immediate action to curb fuel burn and CO2 emissions rests with improvements of operational efficiency.
+
 The contribution of this paper comprise:
 
 -   conceptualisation of sequencing separation for arrival management and development of an open data and open software based implementation of the approach; and
@@ -54,13 +73,6 @@ The contribution of this paper comprise:
 # Trajectory-Based Operations - Arrival Management
 
 ## header 2
-
-some cool text.
-
-Lorem Ipsum is simply dummy text of the printing and typesetting industry.
-Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.
-It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.
-It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
 
 # Data and Conceptual Approach
 
@@ -84,11 +96,13 @@ The identification of the landing direction is based on a simple geospatial heur
 Conceptually, aircraft are aligned with the runway (centerline) before landing.
 An aircraft is assigned to a landing runway based on the closeness of its pre-landing positions to the extended runway centerline.
 
-## Open Data for Operational Performance Monitoring
-
 ## Arrival Sequencing
 
-sequence separation
+Spacing deviation
+
+Let us consider a pair of consecutive landing aircraft denoted leader and trailer, with s their required time spacing1.
+Using the constant time delay principle, the spacing deviation (or spacing error) at time t considers the current position of trailer at time t, and the past position of leader at time t -- s.
+Precisely, it is defined as the difference between the respective minimum times from these two positions (see figure below): spacing deviation (t) = min time (trailer (t)) -- min time (leader (t -- s))
 
 # Case Study - Results
 
@@ -112,7 +126,7 @@ This paper aimed at exploring a data-driven approach to measuring arrival manage
 
 <!-- final appraisal -->
 
-# Reproducibility  {.unnumbered}
+# Reproducibility {.unnumbered}
 
 This paper has been built with the R/RStudio ecosystem.
 The draft manuscript and its supporting data preparatory steps are archived at https://github.com/rainer-rq-koelle/paper-2023-ICNS.

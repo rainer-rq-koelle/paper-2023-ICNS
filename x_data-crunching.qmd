@@ -1,0 +1,85 @@
+---
+title: "Data Preparation"
+format: pdf
+---
+
+DEVELOPMENT VERSION
+
+```{r}
+#| message: false
+library(tidyverse)
+library(sf)
+
+# set default ggplot theme
+ggplot2::theme_set(ggplot2::theme_minimal())
+```
+
+
+## Overview
+
+This Quarto-markdown document lists the data preparatory steps.   
+The following is developed for London Heathrow.
+
+1. Load OSN data
+2. load target airport(s)
+
+
+## Load OSN data
+
+```{r}
+source("./R/osn_dumps.R")
+source("./R/osn_read_tardump.R")
+source("./R/osn_make_nice_names.R")
+source("./R/coerce_meter_to_feet.R")
+```
+
+```{r}
+#| message: false
+#| warning: false
+pth_to_dumps <- "../__DATA/OSN-dumps"
+ptn <- "2019-08-01"
+
+# list downloaded dumps
+fns <- list.files(path = pth_to_dumps, pattern = ptn, full.names = TRUE)
+
+# load list of chosen dumps
+ds  <- fns |> 
+  purrr::map_dfr(.f = read_osn_tar_file) |> 
+  make_nice_names_osn() |> 
+  mutate(ALT_B = coerce_meter_to_feet(ALT_B))
+```
+
+## Load target airport
+
+```{r}
+source(here::here("R", "cast_sf_utils.R"))
+source(here::here("R", "cast_sf_rwy.R"))
+
+# load EGLL environment
+rwys_egll <- read_csv("./data/rwys-EGLL.csv", show_col_types = FALSE)
+arp_egll  <- read_csv("./data/aip.csv", show_col_types = FALSE) |>
+  filter(ICAO == "EGLL", REF == "OSN-center")
+
+# cast sf
+arp_pt    <- arp_egll  |> cast_latlon_to_pts(.drop_coord = FALSE) 
+rwys_pts  <- rwys_egll |> cast_latlon_to_pts()
+rwys_ls   <- rwys_egll |> cast_rwy_ls()
+
+rwy_centerline_ls <- cast_rwy_ctr_line_ls(rwys_egll)
+rwy_box           <- airport_threshold_box(rwys_egll)
+```
+
+```{r}
+apt_arrival_plot <- ggplot() +
+  geom_sf(data = rq) +
+  geom_sf(data = rwy_box) +
+  geom_sf(data = arp_pt, size = 3, color = "blue") +
+  geom_sf(data = rwys_ls) +
+  geom_sf(data = rwys_pts, color = "red") +
+  geom_sf(data = rwy_centerline_ls, color = "green") +
+  geom_sf_text(data = rwy_centerline_ls, aes(label = REF)) 
+apt_arrival_plot
+```
+
+apt_arrival_plot +
+  geom_sf(data = baw236_landing_ls)

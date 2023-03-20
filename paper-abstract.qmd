@@ -1,0 +1,21 @@
+---
+title: "abstract"
+format: pdf
+---
+
+Partial abstract ... taken from EDAS
+
+
+The years 2019 through 2022 mark an unprecedented period for air transportation. Following peak congestion phenomena in 2019, the impact of COVID-19 resulted in the grounding of the global fleet in 2020 as governments aimed to contain the further spread of the corona virus. Within Europe, the recovery of air transportation in 2022 was further impacted by the repercussion of the war in Ukraine and the overall economic fallout in terms of cost-of-living inflation and fuel prices.
+
+Across the industry the call to build back is accompanied by the need to address the challenges of a continued growth of aviation. Emerging political goals calls to build back "greener" and ensure a highly efficient air navigation system. Arrival operations at airports form part of a substantial benefit pool by managing planning uncertainty, actual travel times, and limited runway system throughput capacity. This paper considers a data-driven approach to monitor the operational performance of arrival management in Europe.
+
+One of the key issues identified is the balance between utilisation of the runway system capacity and associated traffic separation and synchronisation within the arrival phase. The success of avoiding air traffic control interventions within the terminal airspace diminishes without utilising upstream synchronisation of arrival traffic. Experience from increasing additional times in the terminal airspace during the COVID recovery suggest that there is a benefit pool. However, monitoring of the efficiency of arrival management with the concept of additional time provides not for the required level of transparency in support of tapping into this benefit pool.
+
+This paper introduces a spatial-temporal framework for arrival management by analysing flight trajectories. As assessing the efficiency of arrival management includes the extension of the analysis horizon beyond the terminal airspace. The trajectory-based approach overcomes the limitations of today's operational performance monitoring metrics and allows for the inclusion of meteorological or airspace structure related impacts, and support to evaluate the operated sequencing techniques/concepts.
+
+This paper addresses the challenges of establishing a data-driven trajectory-analytical approach to characterising and monitoring the performance of arrival management techniques. The approach is detailed and studied on the basis of open trajectory data for a subset of airports with different arrival concepts (e.g. runway pressure/time-based separation on final, point-merge, extended arrival management) in Europe and the United States. We describe the concept development and modelling work. The validation of the approach has been tested based on historic open trajectory data. The utility of the measures is further demonstrated on current data showing how the measures can help to evaluate the performance during the recovery from COVID low traffic/demand scenario.
+
+The results obtained indicate the general feasibility of the approach and its application within the European context. The operational performance measures obtained support a richer discussion of efficiency increasing improvements and concepts. The ability to provide spatial and temporal measures based on 4D trajectories is an enabler to assess and compare the benefits of specific arrival management techniques. This allows strategic planers and decision-makers to select from a wider range of such techniques and options. The latter will also impact the continual strive for higher operational efficiency to achieve and further reduce the environmental impact of air navigation.
+
+The work presented serves as a building block to develop a data-driven approach to measuring performance in the arrival phase and addressing discussions on the utility of arrival management techniques at different airports. The results of t
