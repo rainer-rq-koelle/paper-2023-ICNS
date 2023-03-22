@@ -13,6 +13,7 @@ fix_invalid_fltid <- function(.trjs, .fltid = FLTID,...){
   # remove fltids with space
   fixed <- fixed |> 
     dplyr::mutate(
+      # label and remove FLTIDs with empty space(s)
        FIXCHECK = stringr::str_count({{.fltid}}, pattern = "\\s+")
       ,{{.fltid}} := ifelse(FIXCHECK == 1, NA_character_, {{.fltid}})
       )

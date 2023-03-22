@@ -6,23 +6,18 @@
 #' @export
 #'
 #' @examples
-fix_altitude_heuristic <- function(.trj){
+fix_altitude_heuristic <- function(.trj, .v_to = 50){
   fixed <- .trj |> 
-    dplyr::mutate(
-      ALT_B = dplyr::case_when(
-        # capture off-sets for landing/rolling/blocking-in aircraft
-          velocity < 90 & ALT_B > 5000 & !is.na(ALT_G) ~ ALT_G
-        # capture off-sets for departing aircraft
-        # or is.na(ALT_G)
-        # TODO
-      )
-    )
+  # flights are airborne at velocity > 
+    dplyr::filter(velocity >= .v_to) |> 
+  # remove off-set for landing flights
+    dplyr::filter(!(velocity < 90 & ALT_B > 5000))
   
   # landing trajectories have no altitude information towards the end
   # we need to probably identify standstill / gate-in
   # heuristic we fill downwards in time
-  fixed <- fixed |> 
-    tidyr::fill(ALT_B, .direction = "down")
+  # fixed <- fixed |> 
+  #   tidyr::fill(ALT_B, .direction = "down")
   
   return(fixed)
 }

@@ -67,6 +67,16 @@ ds  |>
   theme(legend.position = "top")
 ```
 
+```{r}
+ds  |> 
+  filter(ICAO24 == "3c6498") |> 
+  fix_altitude_heuristic() |> 
+  Alt_Outlier_filter(.alt_var = ALT_B) |> 
+  ggplot() + 
+    geom_point(aes(x = TIME, y = ALT_B, color = velocity < 90 & ALT_B > 5000)) + 
+    geom_point(aes(x = TIME, y = ALT_G), color = "green") +
+  theme(legend.position = "top")
+```
 
 
 ## Load target airport
@@ -157,13 +167,19 @@ check_leg_fltid <- function(.trjs_with_legs, ...){
 
 ```{r}
 rq <- ds |> 
+  # subset for ICAO24s seen at the study airport
   filter(ICAO24 %in% seen_at_airport$ICAO24) |> 
-  coerce_unixepoch_to_datetime() |> 
-  identify_trajectory_legs() |> 
+  # human readable TIME
+  coerce_unixepoch_to_datetime() |>
+  # clean ALT and trim for airborne part with heuristic fix
   Alt_Outlier_filter(.alt_var = ALT_B) |> 
   fix_altitude_heuristic() |> 
-  mutate(UID = paste(ICAO24, LEG, sep = "-"))
-rq <- rq |> ungroup()
+  # assign leg for each airborne segment
+  identify_trajectory_legs() |> 
+  # force single FLTID here to construct niche UIDs
+  group_by(ICAO24, LEG) |> fix_invalid_fltid() |> ungroup() |> 
+  # construct UID
+  mutate(UID = paste(ICAO24, LEG, sep = "-")) 
 
 # check one more time for airport
 seen_at_airport2 <- icao24_in_polygon(rq, airport_box, UID) |> 
@@ -186,3 +202,14 @@ picks <- seen_at_airport2$UID[1:9]
 rq |> filter(UID %in% picks) |> viz_check_DAO() + facet_wrap(.~UID)
 ```
 
+per arrival trajectory (iterate, group modify)
+
+* subset to 200NM
+* initialise mst
+* assign landing runway & landing time
+* calculate characteristics
+  + time-to-go
+  + distance-to-go
+  + crossings (e.g for ASMA)
+  
+* save out mst/enriched trajectory

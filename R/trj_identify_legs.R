@@ -11,7 +11,7 @@
 #' @export
 #'
 #' @examples
-identify_trajectory_legs <- function(.trjs, .grp_var=ICAO24, .max_gap=15){
+identify_trajectory_legs <- function(.trjs, .grp_var=ICAO24, .max_gap=10){
   df <- .trjs %>%
     dplyr::group_by({{.grp_var}}) %>%
     dplyr::arrange(TIME, .by_group = TRUE) %>%
