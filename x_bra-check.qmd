@@ -5,6 +5,7 @@ format: html
 
 ```{r}
 library(tidyverse)
+library(patchwork)
 ```
 
 
@@ -40,10 +41,19 @@ rwys_sbgr <- tribble(
 
 
 ```{r}
-#sbgr_arp   <- c(rwys_sbgr$LON, rwys_sbgr$LAT)
-sbgr_200NM <- trrrj::polygon_at_distance(c(8.570556, 50.03333), d = 205)
+sbgr_arp   <- rwys_sbgr |> filter(ICAO == "SBGR", REF == "ARP") |> select(LAT, LON)
+sbgr_200NM <- trrrj::polygon_at_distance(c(sbgr_arp$LON, sbgr_arp$LAT), d = 205) |> 
+  sf::st_as_sf() |> 
+  rename(geometry = x) |> 
+  mutate(NAME = "SBGR-200")
 ```
 
+```{r}
+sbgr_base_plot <- ggplot() +
+  geom_sf(data = sbgr_200NM) +
+  geom_point(data = sbgr_arp, aes(x = LON, y = LAT))
+sbgr_base_plot
+```
 
 
 
@@ -68,3 +78,70 @@ bra  <- fns |>
   purrr::map_dfr(.f = read_osn_tar_file) |> 
   make_nice_names_osn()
 ```
+
+## spatial subsetting for SBGR
+
+```{r}
+spatial_subset <- function(.payload, .outer, ...){
+  # check if payload is already a sf object
+  if(!is(.payload,"sf")){
+    .payload <- .payload |> cast_latlon_to_pts(.drop_coord = FALSE)
+  }
+  # spatial subsetting
+  trimmed_data <- .payload[.outer,]
+}
+
+trjs_pts <- spatial_subset(bra |> filter(!is.na(LAT)), sbgr_200NM)
+
+# trjs_pts |> sf::st_drop_geometry() |> 
+#   arrow::write_parquet("./data/bra-sbgr-20220509.parquet")
+```
+
+```{r}
+sbgr_base_plot + geom_sf(data = trjs_pts)
+```
+
+```{r}
+picks <- trjs_pts |> filter(FLTID %in% c("TAM3201", "GLO1612","TAM3172", "DLH506"))
+
+sbgr_base_plot + geom_sf(data = picks, aes(color = ALT_B))
+```
+
+```{r}
+trjs_pts |> filter(FLTID == "DLH506") |> ggplot() + geom_point(aes(x = TIME, y = ALT_B))
+```
+
+## Subsetting for KATL
+
+```{r}
+katl_arp   <- c(-84.4278640,33.6366996)
+katl_200NM <- trrrj::polygon_at_distance(katl_arp, d = 205) |> sf::st_as_sf() |> 
+  rename(geometry = x) |> 
+  mutate(NAME = "KATL-205")
+
+katl_pts <- spatial_subset(bra |> filter(!is.na(LAT)), katl_200NM)
+katl_pts |> sf::st_drop_geometry() |> arrow::write_parquet("./data/usa-katl-20220509.parquet")
+```
+
+```{}
+# just a black ball = fully covered
+ggplot() +
+  geom_sf(data = katl_200NM) +
+  geom_sf(data = katl_pts)
+```
+
+```{r}
+check_flight <- katl_pts |> filter(ICAO24 %in% c("a3b4b5")) 
+
+p1 <- check_flight |> 
+  ggplot() +
+  geom_sf(data = katl_200NM) +
+  geom_point(aes(x = LON, y = LAT, color = ALT_B))
+
+p2 <- check_flight |> 
+  ggplot() +
+  geom_point(aes(x = TIME, y = ALT_B, color = ALT_B))
+
+p1 + p2 + plot_layout(guides = 'collect')
+```
+

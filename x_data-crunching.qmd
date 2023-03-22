@@ -46,8 +46,28 @@ fns <- list.files(path = pth_to_dumps, pattern = ptn, full.names = TRUE)
 ds  <- fns |> 
   purrr::map_dfr(.f = read_osn_tar_file) |> 
   make_nice_names_osn() |> 
-  mutate(ALT_B = coerce_meter_to_feet(ALT_B))
+  mutate(across(.cols = c("ALT_B","ALT_G"), .fns = coerce_meter_to_feet))
 ```
+
+## some trajectory cleaning
+
+we study airborn part, i.e. from take-off to landing
+
+* departing flights: velocity > 50 m/s
+* landing flights cannot have altitude above 5000ft, velocity < 90
+
+```{r}
+ds  |> 
+  filter(ICAO24 == "3c6498") |> 
+  filter(velocity > 50) |> 
+  Alt_Outlier_filter(.alt_var = ALT_B) |> 
+  ggplot() + 
+    geom_point(aes(x = TIME, y = ALT_B, color = velocity < 90 & ALT_B > 5000)) + 
+    geom_point(aes(x = TIME, y = ALT_G), color = "green") +
+  theme(legend.position = "top")
+```
+
+
 
 ## Load target airport
 
@@ -67,12 +87,14 @@ rwys_ls   <- rwys_egll |> cast_rwy_ls()
 
 rwy_centerline_ls <- cast_rwy_ctr_line_ls(rwys_egll)
 rwy_box           <- airport_threshold_box(rwys_egll)
+airport_box       <- airport_centerline_box(rwys_egll)
 ```
+
+Check some of the functions and shapes
 
 ```{r}
 apt_arrival_plot <- ggplot() +
-  geom_sf(data = rq) +
-  geom_sf(data = rwy_box) +
+  geom_sf(data = airport_box) +
   geom_sf(data = arp_pt, size = 3, color = "blue") +
   geom_sf(data = rwys_ls) +
   geom_sf(data = rwys_pts, color = "red") +
@@ -81,5 +103,86 @@ apt_arrival_plot <- ggplot() +
 apt_arrival_plot
 ```
 
-apt_arrival_plot +
-  geom_sf(data = baw236_landing_ls)
+Address[which(LeastNEmployees == max(LeastNEmployees))]
+
+```{r}
+icao24_in_polygon <- function(.ds, .poly, .id = ICAO24){
+  # determine bounding box for polygon
+  this_box <- sf::st_bbox(.poly)
+  # pre-filter with dplyr - cut bounding box
+  icao24s <- .ds |> 
+    dplyr::filter(
+       LAT > this_box$ymin, LAT < this_box$ymax
+      ,LON > this_box$xmin, LON < this_box$xmax, 
+    )
+  # get ids seen
+  icao24s <- icao24s |> 
+    dplyr::summarise(
+      N = n(), N_ID = length(unique(FLTID))
+      , MIN_TIME = min(TIME,na.rm = TRUE)
+      , MIN_TIME_ALT = ALT_B[which(TIME == MIN_TIME)]
+      , MAX_TIME = max(TIME, na.rm = TRUE)
+      , MAX_TIME_ALT = ALT_B[which(TIME == MAX_TIME)]
+      , MIN_ALT = min(ALT_B, na.rm = TRUE)
+      , MED_ALT = median(ALT_B, na.rm = TRUE)
+      , MAX_ALT = max(ALT_B, na.rm = TRUE)
+      , .by = {{.id}})
+}
+```
+
+```{r}
+seen_at_airport <- icao24_in_polygon(ds, airport_box)
+seen_at_airport
+```
+
+```{r}
+source("~/RProjects/paper-2023-ICNS/R/trj_identify_legs.R")
+source("~/RProjects/paper-2023-ICNS/R/coerce_unixepoch_to_datetime.R")
+source("~/RProjects/paper-2023-ICNS/R/trj_fix_fltid.R")
+source("~/RProjects/paper-2023-ICNS/R/add_distance_rowwise.R")
+source("~/RProjects/paper-2023-ICNS/R/trj_fix_altitude.R")
+source("~/RProjects/paper-2023-ICNS/R/heuristic_DAO.R")
+
+# helper function to check missing FLTID or gaps
+check_leg_fltid <- function(.trjs_with_legs, ...){
+  .trjs_with_legs |> 
+    dplyr::summarise(
+        N = n(), N_ID = length(unique(FLTID))
+      , IDs = paste(unique(FLTID), collapse = "-")
+      , NAs = sum(is.na(FLTID))
+      , .by = c("ICAO24","LEG")
+      )
+}
+```
+
+```{r}
+rq <- ds |> 
+  filter(ICAO24 %in% seen_at_airport$ICAO24) |> 
+  coerce_unixepoch_to_datetime() |> 
+  identify_trajectory_legs() |> 
+  Alt_Outlier_filter(.alt_var = ALT_B) |> 
+  fix_altitude_heuristic() |> 
+  mutate(UID = paste(ICAO24, LEG, sep = "-"))
+rq <- rq |> ungroup()
+
+# check one more time for airport
+seen_at_airport2 <- icao24_in_polygon(rq, airport_box, UID) |> 
+  heuristic_DAO()
+seen_at_airport2
+```
+
+```{r}
+viz_check_DAO <- function(.trj, .apt_box = airport_box){
+  plt <- .trj |> 
+    ggplot() + 
+      geom_sf(data = .apt_box) + 
+      geom_point(data = .trj, aes(x = LON, y = LAT, color = TIME)) + 
+      coord_sf(xlim = c(-1, 0), ylim = c(51.3, 51.6), expand = FALSE)
+  return(plt)
+}
+
+picks <- seen_at_airport2$UID[1:9]
+
+rq |> filter(UID %in% picks) |> viz_check_DAO() + facet_wrap(.~UID)
+```
+

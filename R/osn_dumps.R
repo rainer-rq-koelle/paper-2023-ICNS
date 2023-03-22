@@ -5,10 +5,9 @@
 #'
 #' @examples
 #' \dontrun{}
-osn_list_dumps <- function(){
+osn_list_dumps <- function(.url = "https://opensky-network.org/datasets/states/"){
 
-  url <- "https://opensky-network.org/datasets/states/"
-
+  url <- .url
   # scrape page
   dump_page <- rvest::read_html(url)
 
@@ -25,9 +24,9 @@ osn_list_dumps <- function(){
 }
 
 
-construct_dump_download_links <- function(.date){
+construct_dump_download_links <- function(.date, .url = "https://opensky-network.org/datasets/states/"){
 
-  url <- "https://opensky-network.org/datasets/states/"
+  url <- .url    # todo check for web address, etc
   url_date <- paste0(
      url
     ,.date

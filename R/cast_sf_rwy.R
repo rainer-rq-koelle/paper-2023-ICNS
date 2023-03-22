@@ -75,7 +75,17 @@ airport_threshold_box <- function(.rwys_df, .thr_buffer = 500, ...){
   rwys_pts_buf <- .rwys_df |> cast_latlon_to_pts() |> 
     sf::st_buffer(dist = .thr_buffer)
   # combine and add convex hull to encompass all thresholds
-  rwys_box <- rwys_pts_buf |> sf::st_union() |> sf::st_concave_hull()
+  rwys_box <- rwys_pts_buf |> sf::st_union() |> sf::st_convex_hull()
 
   return(rwys_box)
+}
+
+airport_centerline_box <- function(.rwys_df, .thr_buffer = 500, .ctrline_buffer = 500){
+  airport_box  <- airport_threshold_box(.rwys_df, .thr_buffer)
+  ctr_line_buf <- cast_rwy_ctr_line_ls(.rwys_df) |> sf::st_buffer(dist = .ctrline_buffer)
+  
+  combo_box    <- sf::st_union(airport_box, ctr_line_buf) |> 
+    sf::st_convex_hull() |> 
+    sf::st_union()
+  return(combo_box)
 }
