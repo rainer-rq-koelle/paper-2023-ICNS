@@ -9,6 +9,7 @@ DEVELOPMENT VERSION
 #| message: false
 library(tidyverse)
 library(sf)
+library(patchwork)
 
 # set default ggplot theme
 ggplot2::theme_set(ggplot2::theme_minimal())
@@ -203,6 +204,13 @@ viz_check_DAO <- function(.trj, .apt_box = airport_box){
   return(plt)
 }
 
+viz_check_vertical <- function(.trj){
+  plt <- .trj |> 
+    ggplot() +
+    geom_point(aes(x = TIME, y = ALT_B))
+  return(plt)
+}
+
 picks <- seen_at_airport2$UID[1:9]
 
 rq |> filter(UID %in% picks) |> viz_check_DAO() + facet_wrap(.~UID)
@@ -235,3 +243,104 @@ mst <- initialise_milestone_table(arr_trjs)
 mst
 ```
 
+landing runway assignment
+
+```{r}
+source("~/RProjects/paper-2023-ICNS/R/trj_landing_runway.R")
+
+# test for one
+arr_rwy <- arr_trjs |> filter(UID == "00b1f9-0") |> assign_landing_runway()
+arr_rwy
+
+arr_rwys <- arr_trjs |> assign_landing_runway()
+arr_rwys
+```
+
+```{r}
+arr_rwys |> ggplot() + geom_histogram(aes(x = TRUST), bindwidth = 2)
+```
+
+# check for some fringe cases
+
+```{r}
+fringe_picks <-  arr_rwys |> filter(between(TRUST, 0.4,0.7)) 
+
+viz_check_DAO(arr_trjs |> filter(UID %in% fringe_picks$UID)) + facet_wrap(.~ UID)
+```
+
+Potential to remove = no landing with TRUST < 0.7
+
+* assign landing runway & landing time
+
+do for one/some
+
+> arr_rwys
+# A tibble: 733 × 6
+# Groups:   UID [733]
+   UID      REF       N   TOT TRUST COMMENT                                                      
+   <chr>    <chr> <int> <int> <dbl> <chr>                                                        
+ 1 00b1f9-0 27L      13    16 0.812 landing runway: 27L trust-Level (hits: 13): 0.8125           
+ 2 01013c-0 27L      11    14 0.786 landing runway: 27L trust-Level (hits: 11): 0.785714285714286
+ 3 0101bb-0 27R      12    15 0.8   landing runway: 27R trust-Level (hits: 12): 0.8              
+ 4 0200cb-0 27R      12    15 0.8   landing runway: 27R trust-Level (hits: 12): 0.8              
+ 5 04014c-0 27L      12    15 0.8   landing runway: 27L trust-Level (hits: 12): 0.8              
+ 6 04c15b-0 27R      11    14 0.786 landing runway: 27R trust-Level (hits: 11): 0.785714285714286
+ 7 06a0e6-0 27R      12    15 0.8   landing runway: 27R trust-Level (hits: 12): 0.8              
+ 8 06a11f-0 27R      12    15 0.8   landing runway: 27R trust-Level (hits: 12): 0.8              
+ 9 06a144-0 27L      13    16 0.812 landing runway: 27L trust-Level (hits: 13): 0.8125           
+10 06a149-0 27L      13    16 0.812 landing runway: 27L trust-Level (hits: 13): 0.8125  
+
+```{r}
+arr_trjs |> filter(UID %in% c("00b1f9-0","01013c-0","0101bb-0","0200cb-0")) |> 
+  viz_check_DAO() + facet_wrap(.~UID)
+```
+
+```{r}
+arr_trjs |> filter(UID %in% c("00b1f9-0")) |> 
+  ggplot(
+    aes(  x = TIME
+        , y = ALT_B
+        , color = between(ALT_B, arp_egll$ELEV + 100, arp_egll$ELEV + 1000)
+        )
+    ) + 
+  geom_point() + labs(color = "Approach")
+```
+
+```{r}
+source("~/RProjects/paper-2023-ICNS/R/cast_sf_network.R")
+
+arp  <- arp_egll
+rwys <- rwys_egll
+
+final <- arr_trjs |> filter(UID %in% c("00b1f9-0")) |>
+  filter(ALT_B < arp$ELEV + 2000)
+
+ldg_rwy <- final |> assign_landing_runway(.arp = arp) |> 
+  inner_join(rwys, by = "REF")
+my_thr  <- ldg_rwy |> select(UID, REF, LAT, LON, COMMENT) |> cast_latlon_to_pts(.drop_coord = FALSE) 
+
+final_sfn <- final |> cast_latLon_to_sfnet()
+# blend crossing in network
+# c.f. https://luukvdmeer.github.io/sfnetworks/reference/st_network_blend.html
+# blend points with a tolerance.
+# tol = units::set_units(50, "m")
+final_sfn <- final_sfn %>%
+    sfnetworks::st_network_blend(my_thr |> select(REF, geometry)) #, tolerance = tol)
+
+viz_check_vertical(final) + viz_check_DAO(final)
+```
+
+check for blended point
+final_sfn |> activate("nodes") |> filter(is.na(TIME)) |> select(TIME, ICAO24, LAT, LON, ALT_B, geometry)
+
+point is injected, need to fill details, e.g. TIME
+then extract nodes ~ enriched sequence of final points (maybe use sequence number)
+
+
+NEXT-NEXT
+* calculate characteristics
+  + time-to-go
+  + distance-to-go
+  + crossings (e.g for ASMA)
+  
+* save out mst/enriched trajectory
