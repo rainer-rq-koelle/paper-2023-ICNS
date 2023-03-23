@@ -38,6 +38,10 @@ keywords: [template, demo]
 reference-section-title: References
 bibliography: bibliography.bib
 note: Extra footnote.
+
+execute: 
+  echo: false
+  
 # filters:
 #    - latex-environment
 environments: [mytable, mywidetable]
@@ -89,6 +93,15 @@ data downloaded & script development, data cleaning
 
 Different approaches exists to detect and describe aircraft flight phases, e.g. recent machine learning algorithm [@sun2017flightphase].
 This paper implements a heuristic approach with a focus on the detection of arrival traffic at the study airports.
+Figure @fig-EGLL-arrivals shows the detected arrival flights for a single day.
+
+```{r}
+#| label: fig-EGLL-arrivals
+#| fig-cap: Arrivals at London Heathrow (EGLL) on sample day
+#| out-width: 45%     # 2 column half-size
+knitr::include_graphics("./figures/EGLL-arrivals-single-day.png")
+```
+
 
 ### Landing Runway Identification
 

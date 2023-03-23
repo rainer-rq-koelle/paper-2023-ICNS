@@ -31,6 +31,9 @@ source("./R/osn_dumps.R")
 source("./R/osn_read_tardump.R")
 source("./R/osn_make_nice_names.R")
 source("./R/coerce_meter_to_feet.R")
+source("./R/altitude_outlier_filter.R")
+source("./R/trj_fix_altitude.R")
+source("./R/spatial_subset_jormungand.R")
 ```
 
 ```{r}
@@ -98,6 +101,10 @@ rwys_ls   <- rwys_egll |> cast_rwy_ls()
 rwy_centerline_ls <- cast_rwy_ctr_line_ls(rwys_egll)
 rwy_box           <- airport_threshold_box(rwys_egll)
 airport_box       <- airport_centerline_box(rwys_egll)
+
+# for later
+jormungand <- trrrj::polygon_at_distance(c(arp_egll$LON, arp_egll$LAT), d = 205) |> 
+  sf::st_as_sf() |> rename(geometry = x) |> mutate(NAME = "EGLL-205")
 ```
 
 Check some of the functions and shapes
@@ -112,8 +119,6 @@ apt_arrival_plot <- ggplot() +
   geom_sf_text(data = rwy_centerline_ls, aes(label = REF)) 
 apt_arrival_plot
 ```
-
-Address[which(LeastNEmployees == max(LeastNEmployees))]
 
 ```{r}
 icao24_in_polygon <- function(.ds, .poly, .id = ICAO24){
@@ -169,6 +174,7 @@ check_leg_fltid <- function(.trjs_with_legs, ...){
 rq <- ds |> 
   # subset for ICAO24s seen at the study airport
   filter(ICAO24 %in% seen_at_airport$ICAO24) |> 
+  spatial_subset_jormungand(jormungand) |> 
   # human readable TIME
   coerce_unixepoch_to_datetime() |>
   # clean ALT and trim for airborne part with heuristic fix
@@ -182,7 +188,7 @@ rq <- ds |>
   mutate(UID = paste(ICAO24, LEG, sep = "-")) 
 
 # check one more time for airport
-seen_at_airport2 <- icao24_in_polygon(rq, airport_box, UID) |> 
+seen_at_airport2 <- icao24_in_polygon(rq |> sf::st_drop_geometry(), airport_box, UID) |> 
   heuristic_DAO()
 seen_at_airport2
 ```
@@ -204,8 +210,16 @@ rq |> filter(UID %in% picks) |> viz_check_DAO() + facet_wrap(.~UID)
 
 per arrival trajectory (iterate, group modify)
 
-* subset to 200NM
-* initialise mst
+* subset to 200NM (done - jormungand)
+```{r}
+fig <- ggplot() + geom_sf(data = arr_trjs |> cast_pts_to_ls(.group_var = UID)) +
+  labs(subtitle = paste("EGLL arrivals", ptn, sep = "-")) +
+  theme(plot.title.position = "plot")
+#ggsave(plot = fig, filename = "./figures/EGLL-arrivals-single-day.png", dpi = 300, height = 5, width = 5)
+fig
+```
+
+* initialise mst (done - initialise milestone table function on filtered trajectories)
 * assign landing runway & landing time
 * calculate characteristics
   + time-to-go
@@ -213,3 +227,11 @@ per arrival trajectory (iterate, group modify)
   + crossings (e.g for ASMA)
   
 * save out mst/enriched trajectory
+
+```{r}
+source("~/RProjects/paper-2023-ICNS/R/milestone_functions.R")
+arr_trjs <- rq |> filter(UID %in% (seen_at_airport2 |> filter(DAO == "A") |> pull(UID)) )
+mst <- initialise_milestone_table(arr_trjs)
+mst
+```
+
