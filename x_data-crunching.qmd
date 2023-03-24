@@ -315,20 +315,71 @@ rwys <- rwys_egll
 final <- arr_trjs |> filter(UID %in% c("00b1f9-0")) |>
   filter(ALT_B < arp$ELEV + 2000)
 
+viz_check_vertical(final)
+```
+
+```{r}
+source("~/RProjects/paper-2023-ICNS/R/identify_threshold_overhead.R")
+source("~/RProjects/paper-2023-ICNS/R/add_bearing_to_target.R")
+
+
 ldg_rwy <- final |> assign_landing_runway(.arp = arp) |> 
   inner_join(rwys, by = "REF")
-my_thr  <- ldg_rwy |> select(UID, REF, LAT, LON, COMMENT) |> cast_latlon_to_pts(.drop_coord = FALSE) 
+my_thr  <- ldg_rwy |> select(UID, REF, LAT, LON, COMMENT) |> 
+  cast_latlon_to_pts(.drop_coord = FALSE) 
 
-final_sfn <- final |> cast_latLon_to_sfnet()
-# blend crossing in network
-# c.f. https://luukvdmeer.github.io/sfnetworks/reference/st_network_blend.html
-# blend points with a tolerance.
-# tol = units::set_units(50, "m")
-final_sfn <- final_sfn %>%
-    sfnetworks::st_network_blend(my_thr |> select(REF, geometry)) #, tolerance = tol)
+# check if we have a threshold overflight
+ovr_thr <- identify_threshold_overhead(final, my_thr)
+if(nrow(ovr_thr) > 0){
+  message("THRESHOLD")
+  eldt  <- ovr_thr |> filter(DIST_THR == min(DIST_THR))
+  final <- final |> mutate(MST_LABEL = "ALDT") 
+}else{
+  message("NEED TO WORK ON LANDING TIME")
+}
+
+
 
 viz_check_vertical(final) + viz_check_DAO(final)
 ```
+
+Lets' work this out.
+
+```{r}
+# we have identified an arrival trajectory
+trj_arr <- arr_trjs |> filter(UID %in% "0200cb-0") |> 
+#trj_arr <- arr_trjs |> filter(UID %in% c("00b1f9-0")) |> 
+# trim payload and add sequence id
+  select(UID, TIME, ICAO24, LAT, LON, ALT_B)  |> 
+  rowid_to_column("NODE_ID") |> 
+  mutate(MST = NA_character_)
+
+ldg_rwy <- trj_arr |> assign_landing_runway(.arp = arp) |> 
+  inner_join(rwys, by = "REF")
+my_thr  <- ldg_rwy |> select(UID, REF, LAT, LON, COMMENT) |> 
+  cast_latlon_to_pts(.drop_coord = FALSE) 
+
+# check if we have a threshold overflight
+ovr_thr <- identify_threshold_overhead(trj_arr, my_thr)
+if(nrow(ovr_thr) > 0){
+  message("THRESHOLD")
+  eldt    <- ovr_thr |> filter(DIST_THR == min(DIST_THR)) 
+  trj_arr[eldt$NODE_ID,"MST"] <- "ALDT"
+}else{
+  message("NEED TO WORK ON LANDING TIME")
+}
+```
+ 
+ 
+look at function ahead ... started adding threshold --> complement/fill columns & calc landing time 
+ 
+
+```{r}
+viz_check_vertical(trj_arr)
+```
+
+
+
 
 check for blended point
 final_sfn |> activate("nodes") |> filter(is.na(TIME)) |> select(TIME, ICAO24, LAT, LON, ALT_B, geometry)
