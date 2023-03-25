@@ -2,3 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
+
+# ignore heavy data files
+data/validation-EGLL-2019.csv.gz
+data/usa-katl-20220509.parquet
+data/bra-sbgr-20220509.parquet

@@ -204,6 +204,32 @@ corporation.}
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
 
+Operational efficiency is a key element of addressing aviation's
+contribution to climate change. Emissions may increase due to the
+expected growth in international air traffic until lower emitting
+technologies and fuels and other mitigating measures are developed and
+deployed .. ICAO adopted at its 41st Assembly a long-term aspirational
+goal for international aviation
+\protect\hyperlink{ref-icao2022}{{[}1{]}}. In support to the Paris
+Agreement, the goal is to achieve net-zero carbon emissions by 2050.
+
+Levers for fuel reduction:
+
+* operational efficiency
+
+* market-based measures
+
+* sustainable aviation fuel
+
+* new aircraft propulsion and airframes
+
+A wider use and pick-up of sustainable aviation fuel, and new aircraft
+propulsion technologies or aircraft design requires further research.
+
+Despite the introduction of an initial market-based mechanism, immediate
+action to curb fuel burn and CO2 emissions rests with improvements of
+operational efficiency.
+
 The contribution of this paper comprise:
 
 \begin{itemize}
@@ -222,18 +248,6 @@ Management}\label{trajectory-based-operations---arrival-management}}
 
 \hypertarget{header-2}{%
 \subsection{header 2}\label{header-2}}
-
-some cool text.
-
-Lorem Ipsum is simply dummy text of the printing and typesetting
-industry. Lorem Ipsum has been the industry's standard dummy text ever
-since the 1500s, when an unknown printer took a galley of type and
-scrambled it to make a type specimen book. It has survived not only five
-centuries, but also the leap into electronic typesetting, remaining
-essentially unchanged. It was popularised in the 1960s with the release
-of Letraset sheets containing Lorem Ipsum passages, and more recently
-with desktop publishing software like Aldus PageMaker including versions
-of Lorem Ipsum.
 
 \hypertarget{data-and-conceptual-approach}{%
 \section{Data and Conceptual
@@ -260,9 +274,21 @@ Milestone}\label{trajectory-flight-phase-segmentation-milestone}}
 
 Different approaches exists to detect and describe aircraft flight
 phases, e.g.~recent machine learning algorithm
-\protect\hyperlink{ref-sun2017flightphase}{{[}1{]}}. This paper
+\protect\hyperlink{ref-sun2017flightphase}{{[}2{]}}. This paper
 implements a heuristic approach with a focus on the detection of arrival
-traffic at the study airports.
+traffic at the study airports. Figure Figure~\ref{fig-EGLL-arrivals}
+shows the detected arrival flights for a single day.
+
+\begin{figure}
+
+{\centering \includegraphics[width=0.45\textwidth,height=\textheight]{./figures/EGLL-arrivals-single-day.png}
+
+}
+
+\caption{\label{fig-EGLL-arrivals}Arrivals at London Heathrow (EGLL) on
+sample day}
+
+\end{figure}
 
 \hypertarget{landing-runway-identification}{%
 \subsubsection{Landing Runway
@@ -274,14 +300,19 @@ geospatial heuristic. Conceptually, aircraft are aligned with the runway
 based on the closeness of its pre-landing positions to the extended
 runway centerline.
 
-\hypertarget{open-data-for-operational-performance-monitoring}{%
-\subsection{Open Data for Operational Performance
-Monitoring}\label{open-data-for-operational-performance-monitoring}}
-
 \hypertarget{arrival-sequencing}{%
 \subsection{Arrival Sequencing}\label{arrival-sequencing}}
 
-sequence separation
+Spacing deviation
+
+Let us consider a pair of consecutive landing aircraft denoted leader
+and trailer, with s their required time spacing1. Using the constant
+time delay principle, the spacing deviation (or spacing error) at time t
+considers the current position of trailer at time t, and the past
+position of leader at time t -- s. Precisely, it is defined as the
+difference between the respective minimum times from these two positions
+(see figure below): spacing deviation (t) = min time (trailer (t)) --
+min time (leader (t -- s))
 
 \hypertarget{case-study---results}{%
 \section{Case Study - Results}\label{case-study---results}}
@@ -293,7 +324,7 @@ At the time of writing no global open flight table exists. For this
 study, we validated the sample with reference data available to the
 Performance Review Unit. Under the EUROCONTROL Performance Review
 System, airport operators report movement data on a monthly basis
-\protect\hyperlink{ref-apdf_v1_2019}{{[}2{]}}.
+\protect\hyperlink{ref-apdf_v1_2019}{{[}3{]}}.
 
 \hypertarget{conclusions}{%
 \section{Conclusions}\label{conclusions}}
@@ -329,15 +360,23 @@ or position of EUROCONTROL .
 
 \hypertarget{refs}{}
 \begin{CSLReferences}{0}{0}
-\leavevmode\vadjust pre{\hypertarget{ref-sun2017flightphase}{}}%
+\leavevmode\vadjust pre{\hypertarget{ref-icao2022}{}}%
 \CSLLeftMargin{{[}1{]} }%
+\CSLRightInline{ICAO, {``Resolution A41-21: Consolidated statement of
+continuing ICAO policies and practices related to environmental
+protection {\textemdash} climate change,''} 2022 {[}Online{]}.
+Available:
+\url{https://www.icao.int/environmental-protection/Documents/Assembly/Resolution_A41-21_Climate_change.pdf}}
+
+\leavevmode\vadjust pre{\hypertarget{ref-sun2017flightphase}{}}%
+\CSLLeftMargin{{[}2{]} }%
 \CSLRightInline{J. Sun, J. Ellerbroek, and J. Hoekstra, {``Flight
 extraction and phase identification for large automatic dependent
 surveillance\textendash broadcast datasets,''} \emph{Journal of
 Aerospace Information Systems}, vol. 14, no. 10, pp. 566--572, 2017. }
 
 \leavevmode\vadjust pre{\hypertarget{ref-apdf_v1_2019}{}}%
-\CSLLeftMargin{{[}2{]} }%
+\CSLLeftMargin{{[}3{]} }%
 \CSLRightInline{EUROCONTROL, {``Eurocontrol {Specification} for
 {Operational ANS Performance Monitoring} - {Airport Operator Data
 Flow}.''} 2019 {[}Online{]}. Available:
