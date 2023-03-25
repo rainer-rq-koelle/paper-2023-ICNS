@@ -1,0 +1,51 @@
+---
+title: "Untitled"
+format: html
+---
+
+Check for landing sequence sample from APDF
+
+```{r}
+library(tidyverse)
+
+# test sample 
+ptn <- "2019-08-01"
+
+apdf <- read_csv("./data/validation-EGLL-2019.csv.gz", show_col_types = FALSE)
+
+arrs <- apdf |> filter(PHASE == "ARR") |> 
+  mutate(across(.cols = contains("TIME"), .fns = lubridate::dmy_hms)) |> 
+  filter(grepl(pattern = ptn, x = MVT_TIME)) |> 
+  mutate(BIN = lubridate::floor_date(MVT_TIME, unit = "15 min"))
+```
+Runway usage
+
+```{r}
+arrs |> ggplot() +
+  geom_point(aes(x = MVT_TIME, y = RWY), alpha = 0.3)
+```
+
+
+```{r}
+tmp <- arrs |> 
+  group_by(BIN, RWY) |> summarise(N = n())
+
+tmp |> 
+  ggplot() + geom_step(aes(x = BIN, y = N))
+```
+
+peak sessions 10 per 15 mins
+
+```{r}
+peak_bins <- tmp |> filter(N >=10)
+peak_arrs <- arrs |> filter(BIN %in% peak_bins$BIN) |> arrange(RWY, MVT_TIME)
+peak_arrs
+```
+
+peak_wave = peak_arrs$FLTID[1:10]
+
+```{r}
+fn <- here::here("data","validation-EGLL-APDF-201908-01.csv.gz")
+write_csv(arrs, file = fn)
+```
+

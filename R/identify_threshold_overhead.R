@@ -14,6 +14,9 @@ identify_threshold_ahead <- function(.final, .my_thr ,...){
     trj_add_target_bearing(.my_thr)
   
   # add threshold
-  thr <- select(.my_thr, LAT, LON)
-  trj <- bind_rows(trj, thr)
+  # thr <- select(.my_thr, LAT, LON)
+  # trj <- bind_rows(trj, thr) |>
+  #   dplyr::mutate(NODE_ID = dplyr::lag(NODE_ID) + 1) |> 
+  #   tidyr::fill(UID, ICAO24) |> 
+  #   trj_add_target_bearing(.my_thr)
 }

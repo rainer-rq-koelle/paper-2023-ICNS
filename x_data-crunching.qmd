@@ -346,28 +346,12 @@ viz_check_vertical(final) + viz_check_DAO(final)
 Lets' work this out.
 
 ```{r}
+source("~/RProjects/paper-2023-ICNS/R/assign_threshold_time.R")
+
 # we have identified an arrival trajectory
 trj_arr <- arr_trjs |> filter(UID %in% "0200cb-0") |> 
 #trj_arr <- arr_trjs |> filter(UID %in% c("00b1f9-0")) |> 
-# trim payload and add sequence id
-  select(UID, TIME, ICAO24, LAT, LON, ALT_B)  |> 
-  rowid_to_column("NODE_ID") |> 
-  mutate(MST = NA_character_)
-
-ldg_rwy <- trj_arr |> assign_landing_runway(.arp = arp) |> 
-  inner_join(rwys, by = "REF")
-my_thr  <- ldg_rwy |> select(UID, REF, LAT, LON, COMMENT) |> 
-  cast_latlon_to_pts(.drop_coord = FALSE) 
-
-# check if we have a threshold overflight
-ovr_thr <- identify_threshold_overhead(trj_arr, my_thr)
-if(nrow(ovr_thr) > 0){
-  message("THRESHOLD")
-  eldt    <- ovr_thr |> filter(DIST_THR == min(DIST_THR)) 
-  trj_arr[eldt$NODE_ID,"MST"] <- "ALDT"
-}else{
-  message("NEED TO WORK ON LANDING TIME")
-}
+  assign_threshold_time(my_thr)
 ```
  
  
@@ -378,14 +362,80 @@ look at function ahead ... started adding threshold --> complement/fill columns 
 viz_check_vertical(trj_arr)
 ```
 
+PICK SOME ARRIVALS FOR GETTING CODE IN PLACE
+
+```{r}
+# derived from validation data set, binned per 15 mins per arrival runway
+# 27L 06:30 - 0645
+peak_wave <- c("BAW377", "EWG6VP", "BAW11J", "ETD89G", "AIC161", "AFR82FE", "BAW236","DLH3WU","VIR138M","EWG30N")
+
+peak_trjs <- arr_trjs |> filter(FLTID %in% peak_wave)
+
+viz_check_DAO(peak_trjs) + viz_check_vertical(peak_trjs |> filter(TIME > lubridate::ymd_hm("2019-08-01 06:20")))
+```
+
+```{r}
+# run loop with group_modify()
+# create a new UID for the looping as group_modify cannot accept UID in payload
+# TODO - write functions independent of UID or handle UID outside calculation.
+study_trjs <- peak_trjs |> 
+  mutate(LUID = UID) |> group_by(LUID) |> 
+  group_modify(.f = ~assign_threshold_time(.x,.my_thr = my_thr)) |> 
+  ungroup() |> select(-LUID)
+```
+
+```{r}
+ggplot(data = study_trjs) +
+  geom_point(aes(x = TIME, y = ALT_B)) +
+  geom_vline(xintercept = study_trjs$TIME[which(study_trjs$MST == "ALDT")])
+```
 
 
+first pair
 
-check for blended point
-final_sfn |> activate("nodes") |> filter(is.na(TIME)) |> select(TIME, ICAO24, LAT, LON, ALT_B, geometry)
+```{r}
+# "BAW377","EWG6VP","BAW11J"
+inter_arrival <- study_trjs |> filter(MST == "ALDT") |> group_by(MST_REF) |> arrange(TIME, .by_group = TRUE) |> 
+  mutate(
+     FOLLOWER = lead(UID, default = NA_character_)
+    ,SEP_TIME = difftime(lead(TIME, default = NA), TIME, unit = "sec")
+    )
+inter_arrival
+```
 
-point is injected, need to fill details, e.g. TIME
-then extract nodes ~ enriched sequence of final points (maybe use sequence number)
+```{r}
+p1 <- inter_arrival |> ggplot() +
+  geom_step(aes(x = TIME, y = SEP_TIME))
+p2 <- inter_arrival |> ggplot() +
+  geom_boxplot(aes(x = MST_REF, y = SEP_TIME))
+p1 + p2
+```
+
+
+OK - FUCKED UP HERE 
+NEED to catch improper trajectories that throw error ==> improve cleaning
+wrap look in safely/possibly ... to take care of any other uncaught exception
+
+PRESS ON WITH PIPELINE ... data cleaning is on track ... should work for paper
+
+
+Do this for all of 1. August
+
+```{r}
+fn <- here::here("data","validation-EGLL-APDF-20190801.csv.gz")
+egll_arrs_apdf <- read_csv(fn, show_col_types = FALSE)
+
+# safe loop
+safe_assign_threshold_time <- possibly(.f = assign_threshold_time, otherwise = "Error")
+
+study_trjs <- arr_trjs |> 
+  filter(FLTID %in% egll_arrs_apdf$FLTID) |> 
+  mutate(LUID = UID) |> group_by(LUID) |> 
+  group_modify(.f = ~safe_assign_threshold_time(.x,.my_thr = my_thr)) |> 
+  ungroup() |> select(-LUID)
+```
+
+
 
 
 NEXT-NEXT
