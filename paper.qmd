@@ -67,6 +67,10 @@ Levers for fuel reduction:
 A wider use and pick-up of sustainable aviation fuel, and new aircraft propulsion technologies or aircraft design requires further research.
 
 Despite the introduction of an initial market-based mechanism, immediate action to curb fuel burn and CO2 emissions rests with improvements of operational efficiency.
+<!-- verbatim -->
+ICAO has introduced the trajectory-based operations concept, which promises operational and environmental benefits to aviation. 
+where the flight trajectory of an aircraft is flown as close as possible to the userpreferred route, with as little disruptions as possible through collaborative decision-making mechanism. This includes reducing potential conflicts and resolving demand/capacity imbalances earlier and more efficiently. TBO can therefore bring significant operational and environmental benefits to aviation.  
+<!-- end verbatim copy from ICAO paper -->
 
 The contribution of this paper comprise:
 
@@ -108,6 +112,13 @@ knitr::include_graphics("./figures/EGLL-arrivals-single-day.png")
 The identification of the landing direction is based on a simple geospatial heuristic.
 Conceptually, aircraft are aligned with the runway (centerline) before landing.
 An aircraft is assigned to a landing runway based on the closeness of its pre-landing positions to the extended runway centerline.
+
+```{r}
+#| label: fig-KATL-arrivals
+#| fig-cap: Arrivals at Atlanta Hartsfiled (KATL) on sample day
+#| out-width: 45%     # 2 column half-size
+knitr::include_graphics("./figures/KATL-traffic-single-day.png")
+```
 
 ## Arrival Sequencing
 

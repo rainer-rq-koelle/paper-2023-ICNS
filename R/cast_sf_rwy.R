@@ -60,7 +60,7 @@ rwy_ctr_line_pts <- function(.rwy_ctr_line, .debug = FALSE){
   return(df)  
 }
 
-cast_rwy_ctr_line_ls <- function(.rwys_df){
+cast_rwy_ctr_line_ls <- function(.rwys_df, ...){
   .rwys_df |> 
     rwy_ctr_line() |> 
     rwy_ctr_line_pts() |> 
@@ -80,9 +80,10 @@ airport_threshold_box <- function(.rwys_df, .thr_buffer = 500, ...){
   return(rwys_box)
 }
 
-airport_centerline_box <- function(.rwys_df, .thr_buffer = 500, .ctrline_buffer = 500){
+airport_centerline_box <- function(.rwys_df, .thr_buffer = 500, .ctrline_buffer = 500, ...){
   airport_box  <- airport_threshold_box(.rwys_df, .thr_buffer)
-  ctr_line_buf <- cast_rwy_ctr_line_ls(.rwys_df) |> sf::st_buffer(dist = .ctrline_buffer)
+  ctr_line_buf <- cast_rwy_ctr_line_ls(.rwys_df) |> 
+    sf::st_buffer(dist = .ctrline_buffer)
   
   combo_box    <- sf::st_union(airport_box, ctr_line_buf) |> 
     sf::st_convex_hull() |> 

@@ -1,0 +1,58 @@
+---
+title: "Untitled"
+format: html
+---
+
+working with ATLANTA
+
+```{r}
+rwys_katl <- read_csv("./data/rwys-KATL.csv", show_col_types = FALSE)
+arp_katl  <- tibble(LAT = 33.6366996,LON = -84.4278640, REF = "ARP", "ELEV" = 1026)
+
+katl_ctrl_ls <- cast_rwy_ctr_line_ls(rwys_katl)
+katl_rwy_box <- airport_threshold_box(rwys_katl)
+katl_apt_box <- airport_centerline_box(rwys_katl)
+
+
+fn <- here::here("data", "usa-katl-20220509.parquet")
+katl_trjs <- arrow::read_parquet(fn) 
+
+# |> 
+#   coerce_unixepoch_to_datetime() |> 
+#   identify_trajectory_legs() |> 
+#   fix_invalid_fltid() |> 
+#   make_uid("2022-05-09")
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = katl_apt_box) +
+  geom_sf(data = katl_rwy_box, fill = "lightblue") +
+  geom_sf(data = katl_ctrl_ls) +
+  geom_point(data = katl_trjs |> filter(ALT_B <= arp_katl$ELEV + 500), aes(x = LON, y = LAT), size = 0.2, alpha = 0.2) +
+  coord_sf(xlim = c(-84.8, -84.1), ylim = c(33.5,33.7) ) +
+  labs(x = NULL, y = NULL, subtitle = "KATL - Atlanta Hartsfield") +
+  theme(plot.title.position = "plot")
+#ggsave("./figures/KATL-traffic-single-day.png", dpi = 300, width = 8, height = 5)
+```
+
+identify traffic arriving at Hartsfiled
+
+```{r}
+icaos_seen <- katl_trjs |> filter(ALT_B <= arp_katl$ELEV + 1500) |> icao24_in_polygon(katl_apt_box)
+
+study_trjs <- katl_trjs |> filter(ICAO24 %in% icaos_seen$ICAO24) |> 
+  coerce_unixepoch_to_datetime() |> 
+  identify_trajectory_legs() |> 
+  mutate(TID = paste(ICAO24, LEG, sep = "-"))
+
+icaos_seen2 <- study_trjs |> 
+  filter(ALT_B <= arp_katl$ELEV + 1500) |> 
+  icao24_in_polygon(katl_apt_box, .id = TID) |> 
+  heuristic_DAO()
+
+heuristic_arrs <- icaos_seen2 |> filter(DAO == "A")
+
+study_trjs <- study_trjs |> filter(TID %in% heuristic_arrs$TID)  
+```
+

@@ -1,0 +1,39 @@
+---
+title: "BRA airport data"
+format: html
+---
+
+BRA airport geo data
+
+based on coordination
+
+* go to geo server https://geoaisweb.decea.mil.br/geoserver/web/wicket/bookmarkable/org.geoserver.web.demo.MapPreviewPage?0
+* search for 
+  + airport
+  rwydirection
+  + runway_v2
+  
+select file type to download files.
+
+Stored in data/bra.
+
+```{r}
+library(tidyverse)
+
+bra_apt_arp <- readr::read_csv(here::here("data","bra","airport.csv"), show_col_types = FALSE)
+bra_rwys    <- readr::read_csv(here::here("data","bra","runway_v2.csv"), show_col_types = FALSE)
+bra_thrs    <- readr::read_csv(here::here("data","bra","rwydirection.csv"), show_col_types = FALSE)
+
+bra_study_apts <- bra_apt_arp |> 
+  filter(localidade_id %in% c("SBGR", "SBSP","SBRJ")) |> 
+  select(ICAO = localidade_id, APT_NAME = nome, LAT = latitude_dec, LON = longitude_dec, ELEV = elevacao, airport_pk) |> mutate(ELEV = coerce_meter_to_feet(ELEV))
+```
+
+```{r}
+check_bra_rwys <- bra_rwys |> filter(airport_pk %in% bra_study_apts$airport_pk) |> glimpse()
+```
+
+```{r}
+check_bra_thrs <- check_bra_rwys |> filter(runway_pk %in% check_bra_rwys$runway_pk) |> glimpse()
+```
+
