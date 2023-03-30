@@ -8,6 +8,7 @@
 #'
 #' @examples
 estimate_threshold_time <- function(.trjs_latlon_sf, .my_thr){
+  this_trj <- .trjs_latlon_sf
   
   # decode runway identifier
   RWY <- .my_thr$REF
@@ -15,12 +16,25 @@ estimate_threshold_time <- function(.trjs_latlon_sf, .my_thr){
     rwy_dir <- gsub("\\D","", .rwy) # strip non-digets and replace with empty
     rwy_dir <- ((as.numeric(rwy_dir) * 10) + 360) %% 360
   }
+  # check if BEARING and DISTANCE to threshold are already calculated
+  if(!"DIST_THR" %in% colnames(this_trj)){
+    this_trj <- this_trj |> 
+      dplyr::mutate(
+        DIST_THR = geosphere::distHaversine(
+                cbind(LON, LAT)
+              , cbind(.my_thr$LON,.my_thr$LAT)
+              )
+        )
+  }
+  if(!"BRG_THR" %in% colnames(this_trj)){
+    this_trj <- this_trj |> 
+      dplyr::mutate(
+        BRG_THR = geosphere::bearingRhumb(cbind(LON, LAT), cbind(.my_thr$LON,.my_thr$LAT)))
+  }
   
-  last_pos <- .trjs_latlon_sf %>%
-    mutate(#DIST_THR = distHaversine(cbind(LON, LAT), cbind(LON_THR,LAT_THR))
-           #, BRG_THR = bearingRhumb( cbind(LON, LAT), cbind(LON_THR, LAT_THR))
-           #,
-             BEFORE  = abs(BRG - rwy_to_number(RWY)) < 30
+  last_pos <- this_trj %>%
+    mutate(
+             BEFORE  = abs(BRG_THR - rwy_to_number(RWY)) < 30
            , COASTG  = DIST_THR == lag(DIST_THR)
            , V_GND   = (lag(DIST_THR) - DIST_THR) / as.numeric(TIME - lag(TIME))
            , V_GND_SM= zoo::rollmean(V_GND, k = 9, fill = NA, align = "right")

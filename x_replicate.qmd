@@ -1,0 +1,126 @@
+---
+title: "Replicate earlier study"
+format: html
+---
+
+check what we have done in the past
+
+```{r}
+library(tidyverse)
+
+# read and load study data
+source("~/RProjects/paper-2023-ICNS/R/osn_read_tardump.R")
+source("~/RProjects/paper-2023-ICNS/R/osn_make_nice_names.R")
+source("~/RProjects/paper-2023-ICNS/R/coerce_meter_to_feet.R")
+source("~/RProjects/paper-2023-ICNS/R/coerce_unixepoch_to_datetime.R")
+# subset study data ~ jormungand
+source("~/RProjects/paper-2023-ICNS/R/spatial_subset_jormungand.R")
+source("~/RProjects/paper-2023-ICNS/R/cast_sf_utils.R")
+
+# loop and trajectory processing
+source("~/RProjects/paper-2023-ICNS/R/trj_extract_4d_nest.R")
+source("~/RProjects/paper-2023-ICNS/R/trj_icao24_in_polygon.R")
+source("~/RProjects/paper-2023-ICNS/R/trj_confirm_arrival_at.R")
+
+# runway 
+source("~/RProjects/paper-2023-ICNS/R/cast_sf_rwy.R")
+```
+
+Load one day of OSN dump
+
+```{}
+#| message: false
+pth_to_dumps <- "../__DATA/OSN-dumps"
+ptn <- "2019-08-01"
+
+# list downloaded dumps
+fns <- list.files(path = pth_to_dumps, pattern = ptn, full.names = TRUE)
+
+# load list of chosen dumps
+ds  <- fns |> 
+  purrr::map_dfr(.f = read_osn_tar_file) |> 
+  make_nice_names_osn()
+ds <- ds |> 
+  mutate(across(.cols = c("ALT_B","ALT_G"), .fns = coerce_meter_to_feet)) 
+ds <- ds |> coerce_unixepoch_to_datetime()
+```
+
+Subset for study airports
+EGLL, EHAM, LSZH
+
+```{}
+aip <- read_csv("./data/aip-arp-rwys.csv", show_col_types = FALSE)
+
+apt <- "LSZH"
+arp <- filter(aip, ICAO == apt, REF == "ARP") |> rename(ELEV = GEOM_ALT)
+jormungand <- trrrj::polygon_at_distance(c(arp$LON, arp$LAT), d = 205)
+
+svs <- spatial_subset_jormungand(ds, jormungand)
+
+arrow::write_parquet(svs |> sf::st_drop_geometry(), paste0("./data/", apt, "-200NM-20190801.feather"))
+```
+
+## Load Heathrow
+
+```{r}
+apt <- "EGLL"
+fn  <- list.files(path = "./data", pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
+```
+
+```{r}
+study_loop <- function(.apt, .fn, .debug, ...){
+  
+  #----------- read airport data -------------------------
+  aip <- readr::read_csv("./data/aip-arp-rwys.csv", show_col_types = FALSE) |> 
+    dplyr::filter(ICAO == .apt)
+  if("GEOM_ALT" %in% names(aip)){
+    aip <- aip |> dplyr::rename(ELEV = GEOM_ALT)
+    }
+  
+  arp     <- aip |> dplyr::filter(ICAO == .apt,   REF == "ARP")
+  rwys    <- aip |> dplyr::filter(ICAO == .apt, ! REF == "ARP")
+  apt_box <- airport_centerline_box(rwys, ...) 
+  
+  # ---------------------- load trajectory data --------------------------------
+  warning(paste(.apt, " - reading - ", .fn))
+  ds <- arrow::read_feather(.fn) %>% 
+    tibble::as_tibble() |> 
+    #---- enforce above threshold ~ ELEV arp
+    dplyr::filter(ALT_B >= arp$ELEV + 300)
+  
+  #---------------------- check for local traffic ----------------------------
+  # subset icao24s inside airport box
+  seen_at_airport <- ds |> 
+    dplyr::filter(ALT_B <= arp$ELEV + 4000) |> 
+    spatial_subset_jormungand(apt_box, ...) |> 
+    dplyr::distinct(ICAO24) 
+  
+  ds <- ds |> 
+    dplyr::filter(ICAO24 %in% seen_at_airport$ICAO24) |> 
+    identify_trajectory_legs(.max_gap = 5) |> 
+    mutate(UID = paste(ICAO24, LEG, sep = "-")) 
+  
+  phase <- ds |> extract_4d_nest() |> confirm_arrival_at(apt_box)
+}
+```
+
+```{r}
+gotcha <- study_loop(apt, fn)
+```
+
+rq |> 
+  # subset for ICAO24s seen at the study airport
+  filter(ICAO24 %in% seen_at_airport$ICAO24) |> 
+  spatial_subset_jormungand(jormungand) |> 
+  # human readable TIME
+  coerce_unixepoch_to_datetime() |>
+  # clean ALT and trim for airborne part with heuristic fix
+  Alt_Outlier_filter(.alt_var = ALT_B) |> 
+  fix_altitude_heuristic() |> 
+  # assign leg for each airborne segment
+  identify_trajectory_legs() |> 
+  # force single FLTID here to construct niche UIDs
+  group_by(ICAO24, LEG) |> fix_invalid_fltid() |> ungroup() |> 
+  # construct UID
+  mutate(UID = paste(ICAO24, LEG, sep = "-")) 
+

@@ -1,7 +1,15 @@
 ---
-title: "Untitled"
+title: "Spacing Deviation at US airports"
 format: html
 ---
+
+```{r}
+library(tidyverse)
+
+files_to_sources = list.files(path = "./R", full.names = TRUE)
+purrr::walk(files_to_sources, .f = source)
+```
+
 
 working with ATLANTA
 
@@ -12,6 +20,9 @@ arp_katl  <- tibble(LAT = 33.6366996,LON = -84.4278640, REF = "ARP", "ELEV" = 10
 katl_ctrl_ls <- cast_rwy_ctr_line_ls(rwys_katl)
 katl_rwy_box <- airport_threshold_box(rwys_katl)
 katl_apt_box <- airport_centerline_box(rwys_katl)
+
+katl_200NM <- trrrj::polygon_at_distance(c(arp_katl$LON, arp_katl$LAT), d = 200) |> 
+  sf::st_as_sf() |> mutate(REF = "KATL-200NM")
 
 
 fn <- here::here("data", "usa-katl-20220509.parquet")
@@ -44,6 +55,7 @@ icaos_seen <- katl_trjs |> filter(ALT_B <= arp_katl$ELEV + 1500) |> icao24_in_po
 study_trjs <- katl_trjs |> filter(ICAO24 %in% icaos_seen$ICAO24) |> 
   coerce_unixepoch_to_datetime() |> 
   identify_trajectory_legs() |> 
+ # fix_invalid_fltid() |> 
   mutate(TID = paste(ICAO24, LEG, sep = "-"))
 
 icaos_seen2 <- study_trjs |> 
@@ -54,5 +66,62 @@ icaos_seen2 <- study_trjs |>
 heuristic_arrs <- icaos_seen2 |> filter(DAO == "A")
 
 study_trjs <- study_trjs |> filter(TID %in% heuristic_arrs$TID)  
+
+arrivals <- study_trjs |> 
+  assign_landing_runway(
+      .arp = arp_katl
+    , .rwy_centerline_ls = katl_ctrl_ls 
+    , .upper_bound = 10
+    , .group_var = TID
+    ) |> 
+  filter(N > 5)    # for 10 sec update crossers have typically low number of hits
+```
+```{r}
+itr <- arrivals[1,] |> select(UID = TID, UID_REF = REF)
+
+make_study_arrival_trajectories <- function(.itr, .trjs, .rwys){
+  message("\n", itr$UID)
+  app_trj <- .trjs |> dplyr::filter(UID == itr$UID)
+  app_thr <- .rwys |> dplyr::filter(REF == itr$UID_REF)
+  
+  # estimate threshold (aka landing time)
+  thr_row <- estimate_threshold_time(app_trj, app_thr) |> 
+    select(UID, ICAO24, FLTID, TIME, LAT, LON ) |> 
+    mutate(MST = "THR", MST_LABEL = itr$UID_REF)
+  
+  # append threshold row and trim trajectory
+  app_trj <- app_trj |> bind_rows(thr_row) |> 
+    select(UID, ICAO24, FLTID, TIME, LAT, LON, ALT_B, MST, MST_LABEL) |> 
+    arrange(TIME) |> 
+    rowid_to_column("SEQ_ID")
+  
+  # add "distance-to-go" and "time-to-fly" 
+  app_trj <- app_trj |> add_flight_distance()
+  return(app_trj)
+}
+
+bingo <- itr |> make_study_arrival_trajectories(study_trjs |> rename(UID = TID), rwys_katl)
+```
+
+run for many, function re-written to add RWY to trjs
+
+```{r}
+study_payload <- study_trjs |> 
+  select(TID, ICAO24, FLTID, TIME, LAT, LON, ALT_B) |> 
+  left_join(arrivals |> select(TID, RWY = REF), by = join_by(TID)) |> 
+  rename(UID = TID)
+
+rqq <- study_payload |> 
+  mutate(LUID = UID) |> 
+  group_by(LUID) |> 
+  group_map(.f = ~ safer_make_study_arrival_trajectories2( ., .rwys = rwys_katl))
+
+# check for errors
+names(rqq) <- seq_along(rqq)
+keep(rqq, ~ ! is.data.frame(.x))
+```
+
+```{r}
+next_payload <- keep(rqq, ~is.data.frame(.x)) |> bind_rows()
 ```
 

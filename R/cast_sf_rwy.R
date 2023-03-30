@@ -62,7 +62,7 @@ rwy_ctr_line_pts <- function(.rwy_ctr_line, .debug = FALSE){
 
 cast_rwy_ctr_line_ls <- function(.rwys_df, ...){
   .rwys_df |> 
-    rwy_ctr_line() |> 
+    rwy_ctr_line(...) |> 
     rwy_ctr_line_pts() |> 
     cast_latlon_to_pts() |> 
     cast_pts_to_ls(.group_var = REF)

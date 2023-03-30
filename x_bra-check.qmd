@@ -76,7 +76,7 @@ source("./R/osn_dumps.R")
 source("./R/osn_read_tardump.R")
 source("./R/osn_make_nice_names.R")
 ```
-```{}
+```{r}
 #| message: false
 pth_to_dumps <- "../__DATA/OSN-MondayDumps"
 ptn <- "2022-05-09"
@@ -185,9 +185,19 @@ trjs_pts |> filter(FLTID == "DLH506") |> ggplot() + geom_point(aes(x = TIME, y =
 
 ```{r}
 katl_arp   <- c(-84.4278640,33.6366996)
-katl_200NM <- trrrj::polygon_at_distance(katl_arp, d = 205) |> sf::st_as_sf() |> 
-  rename(geometry = x) |> 
-  mutate(NAME = "KATL-205")
+arp_katl   <- tribble(
+  ~LAT,   ~LON,~REF,~ELEV
+  ,33.6, -84.4,"ARP", 1026
+)
+
+# SPOILER =========
+# trrrj polygon at uses "ireland crs"! 
+# katl_200NM <- trrrj::polygon_at_distance(katl_arp, d = 205) |> sf::st_as_sf() |> 
+#   rename(geometry = x) |> 
+#   mutate(NAME = "KATL-205")
+katl_200NM <- arp_katl |> select(LAT, LON) |> 
+  cast_latlon_to_pts() |> sf::st_buffer(205 * 1852) |> 
+  mutate(REF = "KATL-205NM")
 
 katl_pts <- spatial_subset(bra |> filter(!is.na(LAT)), katl_200NM)
 katl_pts |> sf::st_drop_geometry() |> arrow::write_parquet("./data/usa-katl-20220509.parquet")

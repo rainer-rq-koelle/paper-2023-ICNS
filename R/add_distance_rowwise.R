@@ -18,15 +18,15 @@ add_flight_distance <- function(.trj, unit = "NM"){
   
   df <- df %>%
     dplyr::mutate(
-      LAT_PREV = lag(LAT, default = first(LAT))
-      ,LON_PREV = lag(LON, default = first(LON))
-      ,DIST_FLOWN = geosphere::distHaversine( cbind(LON,LAT)
+      LAT_PREV =  dplyr::lag(LAT, default = dplyr::first(LAT))
+      ,LON_PREV = dplyr::lag(LON, default = dplyr::first(LON))
+      ,DIST_NEXT = geosphere::distHaversine(  cbind(LON,LAT)
                                               ,cbind(LON_PREV, LAT_PREV)
                                               , r = unit_radius)
-      ,DIST_FLOWN = cumsum(DIST_FLOWN)
+      ,DIST_FLOWN = cumsum(DIST_NEXT)
     ) %>%
     # remove additional columns
-    select(-LAT_PREV, - LON_PREV)
+    dplyr::select(-LAT_PREV, - LON_PREV)
   return(df)
 }
 

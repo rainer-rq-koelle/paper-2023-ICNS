@@ -13,13 +13,13 @@
 #' @examples
 estimate_rwy <- function(.trj_pts, .rwy_ctrl_ls, .ctrl_offset = 1000){
   # stop if not
-  tmp <- st_join( .rwy_ctrl_ls, .trj_pts
-                  , join = st_is_within_distance, dist = .ctrl_offset) %>%
-    st_drop_geometry() %>%        # keep just the "spatially joined" dataframe
+  tmp <- sf::st_join( .rwy_ctrl_ls, .trj_pts
+                  , join = sf::st_is_within_distance, dist = .ctrl_offset) %>%
+    sf::st_drop_geometry() %>%        # keep just the "spatially joined" dataframe
     # na.omit() %>%                 # eliminate no hits
-    group_by(REF) %>%
-    summarise(N = n(), .groups = "drop") %>%
-    mutate( TOT   = sum(N, na.rm = TRUE)       # na.rm should not be necessary
+    dplyr::group_by(REF) %>%
+    dplyr::summarise(N = dplyr::n(), .groups = "drop") %>%
+    dplyr::mutate( TOT   = sum(N, na.rm = TRUE)       # na.rm should not be necessary
             ,TRUST = N / TOT)                   # share in case several runways
   
   return(tmp)
@@ -56,17 +56,17 @@ arrival_runway_assignment <- function(.rwy_hit_score){
 #' @export
 #'
 #' @examples
-assign_landing_runway <- function(.arr_trjs, .arp = arp_egll , .group_var = UID ,...){
+assign_landing_runway <- function(.arr_trjs, .arp = arp_egll, .rwy_centerline_ls, .upper_bound = 12 , .group_var = UID ,...){
   final_trjs <- .arr_trjs |>
     # omit flights close to ARP ~ remove potential surface hits -> min = 2!
     # find a better way to filter final 
-    trrrj::filter_positions_at_range(c(.arp$LON, .arp$LAT), 2, 10, lon = LON, lat = LAT)
+    trrrj::filter_positions_at_range(c(.arp$LON, .arp$LAT), 2, .upper_bound, lon = LON, lat = LAT)
   
   final_trjs_pts <- final_trjs |> cast_latlon_to_pts()
   
   ldg_rwy <- final_trjs_pts |> 
     group_by({{.group_var}}) |> 
-    group_modify(.f = ~ estimate_rwy(.x, rwy_centerline_ls) |> arrival_runway_assignment())
+    group_modify(.f = ~ estimate_rwy(.x, .rwy_centerline_ls) |> arrival_runway_assignment())
   
   return(ldg_rwy)
 }
