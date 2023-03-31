@@ -66,7 +66,10 @@ assign_landing_runway <- function(.arr_trjs, .arp = arp_egll, .rwy_centerline_ls
   
   ldg_rwy <- final_trjs_pts |> 
     group_by({{.group_var}}) |> 
-    group_modify(.f = ~ estimate_rwy(.x, .rwy_centerline_ls) |> arrival_runway_assignment())
+    group_modify(
+      .f = ~ estimate_rwy(.x, .rwy_centerline_ls) |> 
+             arrival_runway_assignment()
+      ) |> ungroup()
   
   return(ldg_rwy)
 }
