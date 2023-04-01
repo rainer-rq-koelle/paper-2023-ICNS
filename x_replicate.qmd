@@ -21,6 +21,11 @@ source("~/RProjects/paper-2023-ICNS/R/cast_sf_utils.R")
 source("~/RProjects/paper-2023-ICNS/R/trj_extract_4d_nest.R")
 source("~/RProjects/paper-2023-ICNS/R/trj_icao24_in_polygon.R")
 source("~/RProjects/paper-2023-ICNS/R/trj_confirm_arrival_at.R")
+source("~/RProjects/paper-2023-ICNS/R/trj_check_orphans.R")
+
+# trajectory cleaning
+source("~/RProjects/paper-2023-ICNS/R/trj_fix_altitude.R")
+source("~/RProjects/paper-2023-ICNS/R/altitude_outlier_filter.R")
 
 # runway 
 source("~/RProjects/paper-2023-ICNS/R/cast_sf_rwy.R")
@@ -84,10 +89,12 @@ study_loop <- function(.apt, .fn, .debug, ...){
   
   # ---------------------- load trajectory data --------------------------------
   warning(paste(.apt, " - reading - ", .fn))
-  ds <- arrow::read_feather(.fn) %>% 
-    tibble::as_tibble() |> 
+  ds <- arrow::read_feather(.fn) %>%
+    tibble::as_tibble() |>
     #---- enforce above threshold ~ ELEV arp
-    dplyr::filter(ALT_B >= arp$ELEV + 300)
+    dplyr::filter(ALT_B >= arp$ELEV + 300) |>
+     fix_altitude_heuristic() |>
+     Alt_Outlier_filter(.alt_var = ALT_B)
   
   #---------------------- check for local traffic ----------------------------
   # subset icao24s inside airport box
@@ -103,7 +110,8 @@ study_loop <- function(.apt, .fn, .debug, ...){
   
   phase <- ds |> 
     extract_4d_nest() |> 
-    confirm_arrival_at(apt_box) 
+    confirm_arrival_at(apt_box) |> 
+    check_arrival_orphan()
 }
 ```
 
