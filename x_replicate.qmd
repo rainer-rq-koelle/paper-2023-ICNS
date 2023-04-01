@@ -29,6 +29,13 @@ source("~/RProjects/paper-2023-ICNS/R/altitude_outlier_filter.R")
 
 # runway 
 source("~/RProjects/paper-2023-ICNS/R/cast_sf_rwy.R")
+
+source("~/RProjects/paper-2023-ICNS/R/assign_threshold_time2.R")
+source("~/RProjects/paper-2023-ICNS/R/identify_threshold_overhead.R")
+source("~/RProjects/paper-2023-ICNS/R/add_bearing_to_target.R")
+source("~/RProjects/paper-2023-ICNS/R/estimate_threshold_time.R")
+source("~/RProjects/paper-2023-ICNS/R/identify_threshold_overhead.R")
+source("~/RProjects/paper-2023-ICNS/R/add_landing_time_to_nested_data.R")
 ```
 
 Load one day of OSN dump
@@ -112,6 +119,17 @@ study_loop <- function(.apt, .fn, .debug, ...){
     extract_4d_nest() |> 
     confirm_arrival_at(apt_box) |> 
     check_arrival_orphan()
+  
+  # # add landing time
+  # with_ldg_time <-  phase |> 
+  #   dplyr::mutate(
+  #     study_trj = 
+  #     case_when(
+  #       ARR & ! ORPHAN ~ pmap(
+  #             .l = list(data, UID, RWY)
+  #           , .f = ~ add_landing_time_to_nested_data(..1, ..2, ..3, rwys))) 
+  #     , TRUE ~ "Departure"
+  #   )
 }
 ```
 
@@ -119,29 +137,36 @@ study_loop <- function(.apt, .fn, .debug, ...){
 gotcha <- study_loop(apt, fn)
 ```
 
-part of data cleaning 
-- remove stray orphans inside aerodrome
 
-gotcha |> ungroup() |> filter(ARR) |> mutate(GOTCHA = RWY_TRUST >= quantile(RWY_TRUST, probs = 0.1)) |> filter(GOTCHA, N_LAST < 15) |> filter(UID == "3c66b1-1") |> unnest(last_4d) |> ggplot() + geom_point(aes(x = LON, y = LAT)) + geom_point(data = arp, aes(x = LON, y = LAT), color = "red", size = 3) + geom_sf(data = my_apt_box, fill = NA)
+```{r}
+test_landing_time <- function(phase, rwys = rwys_egll){
+  
+  arrs <- phase |> filter(ARR & !ORPHAN)
+  rest <- phase |> filter(! UID %in% arrs$UID )
+  
+  with_ldg_time <-  arrs |>
+    dplyr::mutate(
+      study_trj = pmap(
+              .l = list(data, UID, RWY)
+            , .f = ~ add_landing_time_to_nested_data(..1, ..2, ..3, rwys)
+            )
+      ) |> 
+   # dplyr::mutate(study_trj = map(.x = study_trj, .f = ~ interpolate_lin_4D(.x, .source = "OSN"))) |> 
+    dplyr::mutate(ALDT = map(.x = study_trj, .f = ~ filter(.x, MST == "ALDT") |> pull(TIME))) |> tidyr::unnest(ALDT)
+  
+  return(bind_rows(with_ldg_time, rest))
+}
 
+(
+  mickey <- gotcha |> test_landing_time()
+)
+```
 
-
-
-
-
-rq |> 
-  # subset for ICAO24s seen at the study airport
-  filter(ICAO24 %in% seen_at_airport$ICAO24) |> 
-  spatial_subset_jormungand(jormungand) |> 
-  # human readable TIME
-  coerce_unixepoch_to_datetime() |>
-  # clean ALT and trim for airborne part with heuristic fix
-  Alt_Outlier_filter(.alt_var = ALT_B) |> 
-  fix_altitude_heuristic() |> 
-  # assign leg for each airborne segment
-  identify_trajectory_legs() |> 
-  # force single FLTID here to construct niche UIDs
-  group_by(ICAO24, LEG) |> fix_invalid_fltid() |> ungroup() |> 
-  # construct UID
-  mutate(UID = paste(ICAO24, LEG, sep = "-")) 
+```{r}
+study_sequences <- mickey |> filter(ARR, !ORPHAN) |> select(UID, RWY, ALDT) |> 
+  arrange(RWY, ALDT, UID) |> 
+  group_by(RWY) |> 
+  mutate(LEAD_DELTA = difftime(ALDT, lag(ALDT, default = first(ALDT)), units = "sec"))
+study_sequences
+```
 

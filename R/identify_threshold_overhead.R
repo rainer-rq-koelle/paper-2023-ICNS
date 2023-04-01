@@ -20,3 +20,9 @@ identify_threshold_ahead <- function(.final, .my_thr ,...){
   #   tidyr::fill(UID, ICAO24) |> 
   #   trj_add_target_bearing(.my_thr)
 }
+
+identify_threshold_ahead2 <- function(.final, .my_thr ,...){
+  trj <- .final |> 
+    dplyr::filter(ALT_B > .my_thr$ELEV + 500) |> 
+    trj_add_target_bearing(.my_thr)
+}
