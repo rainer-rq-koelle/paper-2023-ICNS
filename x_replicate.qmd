@@ -232,6 +232,8 @@ make_tessel_db_entry <- function(.study_trj, .ptn = ptn, ...){
 
 ```{r}
 tessel_info <- make_tessel_db_entry(mickey |> filter(ARR, !ORPHAN))
+
+
 tessel_info
 ```
 
@@ -259,5 +261,96 @@ library(patchwork)
 p1 + p2 +
   plot_layout(guides = 'collect') &
   theme(legend.position = "top")
+```
+
+```{r}
+if(file.exists(tessel_fn)) { message("Open existing tessel database")
+}else{
+  message("Create tessel database")
+    tessel_info |> 
+    dplyr::select(H3_BIN, RWY, TIME_2GO, DIST_2GO, UID ) |> 
+    dplyr::ungroup() |> 
+    readr::write_csv(tessel_fn)
+  }
+```
+
+t-digest (for paper to DASC?)
+https://git.sr.ht/~hrbrmstr/tdigest
+
+```{r}
+tessel_lookup <- readr::read_csv(tessel_fn, show_col_types = FALSE) |> 
+  group_by(H3_BIN, RWY) |> 
+  summarise( TIME_MIN = min(TIME_2GO), TIME_Q5 = quantile(TIME_2GO, probs = 0.05)
+            , DIST_MIN= min(DIST_2GO), DIST_Q5 = quantile(DIST_2GO, probs = 0.05)
+            , SAMPLE_N = n())
+```
+
+
+
+
+
+```{r}
+study_sequences <- mickey |> filter(ARR, !ORPHAN) |> select(UID, RWY, ALDT) |> 
+  arrange(RWY, ALDT, UID) |> 
+  group_by(RWY) |> 
+  mutate(LEAD_DELTA = difftime(ALDT, lag(ALDT, default = first(ALDT)), units = "sec"))
+study_sequences
+```
+
+```{r}
+tmp <- mickey |> filter(UID %in% study_sequences$UID[1:4]) |> 
+  select(UID, RWY2 = RWY, ALDT, study_trj) |> 
+  unnest(study_trj)
+
+ggplot(data = tmp) +
+  geom_point(aes(x = TIME, y = ALT_B))
+```
+
+spacing deviation (t) = min time (trailer (t)) –    min time (leader (t – s)) 
+
+
+```{r}
+add_bin_mins <- function(.trj, .bins){
+  trj <- .trj %>%
+    left_join(.bins %>% select(H3_BIN, RWY, MIN_DIST_2GO, MIN_TIME_2GO)
+              , by = c("RWY", "H3_BIN"))
+  return(trj)
+}
+
+
+calc_pairwise_spacing <- function(.uid, .seq_uid, .t_trail , .ds, .bins = bins){
+
+  leader <- .ds %>% filter(UID == .uid) %>% 
+    add_bin_mins(.bins) %>%
+    select(UID, TIME, RWY, DIST_2GO, TIME_2GO, MIN_DIST_2GO, MIN_TIME_2GO)
+  
+  trailer<- .ds %>% filter(UID == .seq_uid) %>% 
+    add_bin_mins(.bins) %>%
+    select(UID, TIME, RWY, DIST_2GO, TIME_2GO, MIN_DIST_2GO, MIN_TIME_2GO) %>% 
+    mutate(TIME_WARP = TIME - .t_trail)  %>%
+    rename(SEQ_UID = UID, SEQ_DIST_2GO = DIST_2GO, SEQ_TIME_2GO = TIME_2GO
+          ,SEQ_MIN_DIST_2GO = MIN_DIST_2GO, SEQ_MIN_TIME_2GO = MIN_TIME_2GO)
+
+  spacedev <- leader %>% 
+    left_join(trailer, by = c("TIME" = "TIME_WARP", "RWY")) %>% 
+    mutate(MIN_TIME_OFF = MIN_TIME_2GO - SEQ_MIN_TIME_2GO
+         , MIN_DIST_OFF = MIN_DIST_2GO - SEQ_MIN_DIST_2GO
+         , DIST_OFF     = DIST_2GO - SEQ_DIST_2GO
+         , STEP = row_number()) %>% 
+    select(UID, SEQ_UID, STEP, MIN_TIME_OFF, MIN_DIST_OFF, DIST_OFF, everything())
+
+return(spacedev)
+}
+
+#' Smoothing function 
+#' wrapper for slider::slide()
+
+roll_median <- function(.df, .var, .whs, .target_var){
+  df <- .df %>% 
+    mutate(
+     {{.target_var}} := slider::slide_dbl({{.var}}, median, .before = .whs, .after = .whs)
+  )
+}
+
 ```
 
