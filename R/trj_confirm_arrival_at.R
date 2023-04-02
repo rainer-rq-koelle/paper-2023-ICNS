@@ -21,7 +21,7 @@ confirm_arrival_at <- function(.df, .apt_box, .time_window = 500, ...){
     dplyr::mutate(ARR = map(
       .x = last_4d
       ,.f = ~ cast_latlon_to_ls(.x) %>%
-        st_intersects(.apt_box, sparse = FALSE))
+        sf::st_intersects(.apt_box, sparse = FALSE))
     ) %>%
     tidyr::unnest(ARR) |> 
     dplyr::mutate(N_LAST = map(last_4d, nrow)) |> 

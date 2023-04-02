@@ -36,6 +36,9 @@ source("~/RProjects/paper-2023-ICNS/R/add_bearing_to_target.R")
 source("~/RProjects/paper-2023-ICNS/R/estimate_threshold_time.R")
 source("~/RProjects/paper-2023-ICNS/R/identify_threshold_overhead.R")
 source("~/RProjects/paper-2023-ICNS/R/add_landing_time_to_nested_data.R")
+
+# set ggplot theme
+ggplot2::theme_set(ggplot2::theme_minimal())
 ```
 
 Load one day of OSN dump
@@ -145,14 +148,27 @@ test_landing_time <- function(phase, rwys = rwys_egll){
   rest <- phase |> filter(! UID %in% arrs$UID )
   
   with_ldg_time <-  arrs |>
+    # estimate and assign landing time to arrival trajectories
     dplyr::mutate(
       study_trj = pmap(
               .l = list(data, UID, RWY)
             , .f = ~ add_landing_time_to_nested_data(..1, ..2, ..3, rwys)
             )
       ) |> 
-   # dplyr::mutate(study_trj = map(.x = study_trj, .f = ~ interpolate_lin_4D(.x, .source = "OSN"))) |> 
-    dplyr::mutate(ALDT = map(.x = study_trj, .f = ~ filter(.x, MST == "ALDT") |> pull(TIME))) |> tidyr::unnest(ALDT)
+    # pullout ALDT as separate column
+    dplyr::mutate(
+      ALDT = map(.x = study_trj
+               , .f = ~ filter(.x, MST == "ALDT") |> pull(TIME)
+               )
+      ) |> tidyr::unnest(ALDT) |> 
+    # interpolate to 5sec
+    dplyr::mutate(
+      study_trj = map(.x = study_trj
+                    , .f = ~ interpolate_lin_4D(.x, .source = "OSN") |> 
+                             add_time_and_distance_to_go() |> 
+                             dplyr::mutate(H3_BIN = h3::geo_to_h3(c(LAT, LON), res = 8))
+                    )
+      )
   
   return(bind_rows(with_ldg_time, rest))
 }
@@ -168,5 +184,80 @@ study_sequences <- mickey |> filter(ARR, !ORPHAN) |> select(UID, RWY, ALDT) |>
   group_by(RWY) |> 
   mutate(LEAD_DELTA = difftime(ALDT, lag(ALDT, default = first(ALDT)), units = "sec"))
 study_sequences
+```
+
+```{r}
+study_sequences |> filter(LEAD_DELTA < 500) |> 
+  ggplot() +
+  geom_boxplot(aes(x = RWY, y = LEAD_DELTA))
+```
+
+```{r}
+study_sequences <- mickey |> filter(ARR, !ORPHAN) |> select(UID, RWY, ALDT) |> 
+  arrange(RWY, ALDT, UID) |> 
+  group_by(RWY) |> 
+  mutate(
+     LEAD_DELTA = difftime(ALDT, lag(ALDT, default = first(ALDT)), units = "sec")
+    ,INTERACT   = LEAD_DELTA < 240
+    ,LEADER     = ifelse(INTERACT, lag(UID), NA)) |> 
+  ungroup()
+study_sequences
+```
+
+
+write-out tesselation data for reference times
+
+```{r}
+tessel_fn <- here::here("data", "EGLL-tessel-db.csv.gz")
+
+extract_tessel_info <- function(.study_trj, ...){
+  df <- .study_trj
+  df <- df |> dplyr::select(H3_BIN, TIME_2GO, DIST_2GO )
+}
+
+make_tessel_db_entry <- function(.study_trj, .ptn = ptn, ...){
+  df <- .study_trj |> 
+    dplyr::select(UID, RWY, study_trj) |> 
+    dplyr::mutate(UID = paste(UID, gsub("-", "", .ptn), sep = "-")) |> 
+    dplyr::mutate(
+      info = purrr::map(
+                .x = study_trj
+              , .f = ~ extract_tessel_info(.x)
+              )
+      ) |> 
+    tidyr::unnest(info)
+  return(df)
+}
+```
+
+```{r}
+tessel_info <- make_tessel_db_entry(mickey |> filter(ARR, !ORPHAN))
+tessel_info
+```
+
+```{r}
+ti <- tessel_info |> ungroup() |> 
+  select(-study_trj) |> 
+  group_by(H3_BIN) |> summarise(N = n(), .groups = "drop") |> 
+  mutate(
+    # add geometry column without naming column (easier than fixing it afterwards)
+    h3::h3_to_geo_boundary_sf(H3_BIN)
+    ) |> 
+  sf::st_as_sf()
+
+p1 <- ggplot() +
+  geom_sf(data = ti, aes(fill = N), color = NA) + 
+  scale_fill_distiller(palette = "Spectral")
+
+leftright <- 0.3
+p2 <- p1 +
+  coord_sf( xlim = c(arp_egll$LON - leftright, arp_egll$LON + leftright)
+           ,ylim = c(arp_egll$LAT - leftright, arp_egll$LAT + leftright)
+           )
+
+library(patchwork)
+p1 + p2 +
+  plot_layout(guides = 'collect') &
+  theme(legend.position = "top")
 ```
 

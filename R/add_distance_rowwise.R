@@ -30,6 +30,18 @@ add_flight_distance <- function(.trj, unit = "NM"){
   return(df)
 }
 
+add_time_and_distance_to_go <- function(.trj, .mst = "ALDT", .time_unit = "sec"){
+  df <- .trj
+  
+  df <- df |> 
+    add_flight_distance() |> 
+    dplyr::mutate(
+      TIME_2GO = difftime(
+          TIME[which(MST == .mst)], TIME, units = .time_unit)
+    , DIST_2GO = DIST_FLOWN[which(MST == .mst) - DIST_FLOWN])
+  
+  return(df)
+}
 
 # =================== sf based solution ==========================
 # library(sf)
