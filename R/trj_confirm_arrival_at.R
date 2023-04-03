@@ -10,7 +10,7 @@
 #' @export
 #'
 #' @examples
-confirm_arrival_at <- function(.df, .apt_box, .time_window = 500, ...){
+confirm_arrival_at <- function(.df, .apt_box, .rwy_centerline_ls = rwy_centerline_ls, .time_window = 500,...){
   df <- .df %>%
     # extract last (aka oldest) pos reports
     dplyr::mutate(last_4d = map(
@@ -32,7 +32,7 @@ confirm_arrival_at <- function(.df, .apt_box, .time_window = 500, ...){
             .x = last_4d
           , .f = ~ estimate_rwy(
                     .x |> cast_latlon_to_pts()
-                  , rwy_centerline_ls
+                  , .rwy_centerline_ls
                   ) |> 
             arrival_runway_assignment()
           )

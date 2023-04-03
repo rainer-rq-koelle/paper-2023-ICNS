@@ -26,9 +26,11 @@ source("~/RProjects/paper-2023-ICNS/R/trj_check_orphans.R")
 # trajectory cleaning
 source("~/RProjects/paper-2023-ICNS/R/trj_fix_altitude.R")
 source("~/RProjects/paper-2023-ICNS/R/altitude_outlier_filter.R")
+source("~/RProjects/paper-2023-ICNS/R/trj_identify_legs.R")
 
 # runway 
 source("~/RProjects/paper-2023-ICNS/R/cast_sf_rwy.R")
+
 
 source("~/RProjects/paper-2023-ICNS/R/assign_threshold_time2.R")
 source("~/RProjects/paper-2023-ICNS/R/identify_threshold_overhead.R")
@@ -36,6 +38,10 @@ source("~/RProjects/paper-2023-ICNS/R/add_bearing_to_target.R")
 source("~/RProjects/paper-2023-ICNS/R/estimate_threshold_time.R")
 source("~/RProjects/paper-2023-ICNS/R/identify_threshold_overhead.R")
 source("~/RProjects/paper-2023-ICNS/R/add_landing_time_to_nested_data.R")
+source("~/RProjects/paper-2023-ICNS/R/trj_landing_runway.R")
+
+source("~/RProjects/paper-2023-ICNS/R/add_distance_rowwise.R")
+source("~/RProjects/paper-2023-ICNS/R/interpolate_lin_4D.R")
 
 # set ggplot theme
 ggplot2::theme_set(ggplot2::theme_minimal())
@@ -120,7 +126,7 @@ study_loop <- function(.apt, .fn, .debug, ...){
   
   phase <- ds |> 
     extract_4d_nest() |> 
-    confirm_arrival_at(apt_box) |> 
+    confirm_arrival_at(apt_box, rwy_centerline_ls) |> 
     check_arrival_orphan()
   
   # # add landing time
@@ -142,6 +148,12 @@ gotcha <- study_loop(apt, fn)
 
 
 ```{r}
+apt <- "EGLL"
+aip <- readr::read_csv("./data/aip-arp-rwys.csv", show_col_types = FALSE) |> 
+    dplyr::filter(ICAO == apt)
+rwys_egll <- aip |> filter(REF != "ARP") |> rename(ELEV = GEOM_ALT)
+
+
 test_landing_time <- function(phase, rwys = rwys_egll){
   
   arrs <- phase |> filter(ARR & !ORPHAN)
@@ -208,6 +220,10 @@ study_sequences
 write-out tesselation data for reference times
 
 ```{r}
+# check for date of loaded data
+ptn <- "2019-08-01"
+
+
 tessel_fn <- here::here("data", "EGLL-tessel-db.csv.gz")
 
 extract_tessel_info <- function(.study_trj, ...){
@@ -290,10 +306,6 @@ tessel_lookup <- readr::read_csv(tessel_fn, show_col_types = FALSE) |>
 
 
 ```{r}
-study_sequences <- mickey |> filter(ARR, !ORPHAN) |> select(UID, RWY, ALDT) |> 
-  arrange(RWY, ALDT, UID) |> 
-  group_by(RWY) |> 
-  mutate(LEAD_DELTA = difftime(ALDT, lag(ALDT, default = first(ALDT)), units = "sec"))
 study_sequences
 ```
 
@@ -308,39 +320,12 @@ ggplot(data = tmp) +
 
 spacing deviation (t) = min time (trailer (t)) –    min time (leader (t – s)) 
 
+```{r}
+source("~/RProjects/paper-2023-ICNS/pairwise_spacing.R")
+```
+
 
 ```{r}
-add_bin_mins <- function(.trj, .bins){
-  trj <- .trj %>%
-    left_join(.bins %>% select(H3_BIN, RWY, MIN_DIST_2GO, MIN_TIME_2GO)
-              , by = c("RWY", "H3_BIN"))
-  return(trj)
-}
-
-
-calc_pairwise_spacing <- function(.uid, .seq_uid, .t_trail , .ds, .bins = bins){
-
-  leader <- .ds %>% filter(UID == .uid) %>% 
-    add_bin_mins(.bins) %>%
-    select(UID, TIME, RWY, DIST_2GO, TIME_2GO, MIN_DIST_2GO, MIN_TIME_2GO)
-  
-  trailer<- .ds %>% filter(UID == .seq_uid) %>% 
-    add_bin_mins(.bins) %>%
-    select(UID, TIME, RWY, DIST_2GO, TIME_2GO, MIN_DIST_2GO, MIN_TIME_2GO) %>% 
-    mutate(TIME_WARP = TIME - .t_trail)  %>%
-    rename(SEQ_UID = UID, SEQ_DIST_2GO = DIST_2GO, SEQ_TIME_2GO = TIME_2GO
-          ,SEQ_MIN_DIST_2GO = MIN_DIST_2GO, SEQ_MIN_TIME_2GO = MIN_TIME_2GO)
-
-  spacedev <- leader %>% 
-    left_join(trailer, by = c("TIME" = "TIME_WARP", "RWY")) %>% 
-    mutate(MIN_TIME_OFF = MIN_TIME_2GO - SEQ_MIN_TIME_2GO
-         , MIN_DIST_OFF = MIN_DIST_2GO - SEQ_MIN_DIST_2GO
-         , DIST_OFF     = DIST_2GO - SEQ_DIST_2GO
-         , STEP = row_number()) %>% 
-    select(UID, SEQ_UID, STEP, MIN_TIME_OFF, MIN_DIST_OFF, DIST_OFF, everything())
-
-return(spacedev)
-}
 
 #' Smoothing function 
 #' wrapper for slider::slide()
@@ -352,5 +337,64 @@ roll_median <- function(.df, .var, .whs, .target_var){
   )
 }
 
+```
+
+do for 1 pair
+```{r}
+rq <- my_pairwise_spacing("400550-0", "89505a-0",.t_trail = 134, .bins = tessel_lookup) 
+
+# can we smooth the results ======================
+#' Smoothing function 
+#' wrapper for slider::slide()
+
+roll_median <- function(.df, .var, .whs, .target_var){
+  df <- .df %>% 
+    mutate(
+     {{.target_var}} := slider::slide_dbl({{.var}}, median, .before = .whs, .after = .whs)
+  )
+} #-----------------------------------------------
+whs <- 45
+rqq <- rq |> group_by(UID, SEQ_UID, RWY) %>% 
+  roll_median(MIN_TIME_OFF, whs, SPACING) |> 
+  filter(STEP < 2500)
+
+ggplot() + 
+  geom_line(data = rq,  aes(x = STEP, y = MIN_TIME_OFF), alpha = 0.5) +
+  geom_line(data = rqq, aes(x = STEP, y = SPACING), color = "blue")
+```
+
+do for more couples 
+
+```{r}
+couples <- study_sequences |> 
+  group_by(RWY) |> 
+  filter(!is.na(LEADER), LEAD_DELTA <= 300) |> 
+  ungroup()
+couples
+
+sdp <- couples |> 
+  dplyr::select(LEAD_UID = LEADER, TRAIL_UID = UID, T_TRAIL = LEAD_DELTA) |> 
+  tibble::rowid_to_column("GID")
+sdp
+
+sdp_res <- sdp |> group_by(GID) |> 
+  purrr::pmap(.f = ~ my_pairwise_spacing(..2, ..3, ..4, .bins = tessel_lookup)) |> 
+  bind_rows() |> 
+  tidyr::fill(SEQ_UID, .direction = "up")
+#
+write_csv(sdp_res, "./data/spd-res-EGLL-20190801.csv.gz")
+```
+
+```{r}
+sdp_smooth <- sdp_res |> group_by(UID, SEQ_UID, RWY) %>% 
+  roll_median(MIN_TIME_OFF, whs, SPACING) |> 
+  filter(STEP < 2500) 
+sdp_smooth <- sdp_smooth |> mutate(GID = dplyr::cur_group_id())
+
+ggplot() + 
+  geom_line(  data = sdp_res |> group_by(UID,SEQ_UID) |> 
+                              mutate(GID = dplyr::cur_group_id())
+            , aes(x = STEP, y = MIN_TIME_OFF, group = GID), alpha = 0.2) +
+  geom_line(data = sdp_smooth, aes(x = STEP, y = SPACING, group = GID), color = "blue", alpha = 0.5)
 ```
 

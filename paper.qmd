@@ -67,9 +67,10 @@ Levers for fuel reduction:
 A wider use and pick-up of sustainable aviation fuel, and new aircraft propulsion technologies or aircraft design requires further research.
 
 Despite the introduction of an initial market-based mechanism, immediate action to curb fuel burn and CO2 emissions rests with improvements of operational efficiency.
-<!-- verbatim -->
-ICAO has introduced the trajectory-based operations concept, which promises operational and environmental benefits to aviation. 
-where the flight trajectory of an aircraft is flown as close as possible to the userpreferred route, with as little disruptions as possible through collaborative decision-making mechanism. This includes reducing potential conflicts and resolving demand/capacity imbalances earlier and more efficiently. TBO can therefore bring significant operational and environmental benefits to aviation.  
+<!-- verbatim --> ICAO has introduced the trajectory-based operations concept, which promises operational and environmental benefits to aviation.
+where the flight trajectory of an aircraft is flown as close as possible to the userpreferred route, with as little disruptions as possible through collaborative decision-making mechanism.
+This includes reducing potential conflicts and resolving demand/capacity imbalances earlier and more efficiently.
+TBO can therefore bring significant operational and environmental benefits to aviation.\
 <!-- end verbatim copy from ICAO paper -->
 
 The contribution of this paper comprise:
@@ -106,7 +107,6 @@ Figure @fig-EGLL-arrivals shows the detected arrival flights for a single day.
 knitr::include_graphics("./figures/EGLL-arrivals-single-day.png")
 ```
 
-
 ### Landing Runway Identification
 
 The identification of the landing direction is based on a simple geospatial heuristic.
@@ -120,13 +120,41 @@ An aircraft is assigned to a landing runway based on the closeness of its pre-la
 knitr::include_graphics("./figures/KATL-traffic-single-day.png")
 ```
 
-## Arrival Sequencing
+## Generalisation of additional time in terminal airspace
 
-Spacing deviation
+The additional time in terminal airspace (c.f. ICAO KPI08, EUROCONTROL Performance Review System & European Single European Sky Performance Scheme) is typically expressed as the difference between the observed travel time of a flight entering the terminal area (e.g. 40NM or 100NM from the aerodrome reference point) and a respective reference time.
+The latter is defined as the travel time in non-congested situations.
+For practical reasons, the reference (or uncongested) travel times are determined based on a historical data analysis and sub-sampling the population of arrival flights per entry sector/fix, aircraft wake turbulence category and propulsion type (as a proxy of approach speed), and landing runway.
 
-Let us consider a pair of consecutive landing aircraft denoted leader and trailer, with s their required time spacing1.
-Using the constant time delay principle, the spacing deviation (or spacing error) at time t considers the current position of trailer at time t, and the past position of leader at time t -- s.
-Precisely, it is defined as the difference between the respective minimum times from these two positions (see figure below): spacing deviation (t) = min time (trailer (t)) -- min time (leader (t -- s))
+This notion of additional time can be generalised for every subset of points within the arrival airspace.
+On the basis of historic data, the travel time between such a set of points can be determined and compared to the flight time of an uncongested trajectory.
+
+```{r}
+#| label: fig-spacing-deviation-concept
+#| fig-cap: Spacing deviation concept
+#| out-width: 45%     # 2 column half-size
+knitr::include_graphics("./figures/concept.png")
+```
+
+
+For practical reasons, this paper discretises the arrival airspace into cells.
+In particular, we are using hexogonal cells and the H3-indexing system [@ubertechnologiesinc2018].
+Uber originally developed the Hexagonal Hierarchical Geospatial Indexing System (H3) as a grid system for supporting the optimisation of ride planning (and associated pricing and dispatch) and for visualisation purposes.
+H3 is available as an open-source library written in C and with bindings in several languages.
+We use hexagon-cells of resolution 8 with an average edge length of 0.5314 km.
+
+## Arrival Sequencing - Spacing Deviation
+
+Let us consider a pair of consecutive landing aircraft denoted leader and trailer, with $s$ being their temporal spacing (inter-arrival time).
+From an operational perspective, highly efficient operations will maximise the utilisation of the available runway (system) capacity.
+Accordingly, we can assume that during peak times the temporal spacing at landing $s$ accounts for the operational concept applied at the airport, and only comprises a minimal spacing error.
+Potential error sources include additional safety margins applied by the air traffic controller (or aircrew when landing under visual flight rules), variations of the arrival spacing due to reduction of airspeed during the flare.
+We consider the observed temporal spacing $s_{ij}$ as a lower bound for safe operations.
+
+Using the constant time delay principle, the spacing deviation (or spacing error) at time t considers the current position of trailer at time $t$, and the past position of leader at time $t-s$.
+Based on our approach, the spacing deviation is defined as the temporal difference between the respective reference times for the position of the leader and trailer: 
+
+$$spacing deviation (t) = ref{\_}time(trailer_{(t)}) - ref{\_}time(leader_{(t - s)})$$
 
 # Case Study - Results
 
