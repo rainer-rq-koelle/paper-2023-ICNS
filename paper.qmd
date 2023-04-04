@@ -101,6 +101,12 @@ TBO builds on higher levels of information exchange between planning and flow ma
 knitr::include_graphics("./figures/TBO-concept.png")
 ``` 
 
+For this study we postulate the following goal of trajectory based arrival management:
+“… to reduce inefficiencies in the (extended) arrival phase by establishing an arrival sequence to require less costly sequencing close to the airport absorbing time/distance in more fuel efficient altitudes.”
+
+
+
+
 Conceptual approach := technology agnostic
 CONOPS may entail technological enablers and/or advanced procedures
 Performance objectives observed on concept functional level 
