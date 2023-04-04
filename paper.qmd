@@ -5,6 +5,7 @@ title: Arrival Management with Open Data
 format:
   ieeetran-pdf:
     keep-tex: true
+  #docx: default
     
 author:
   - name: Rainer Koelle
@@ -88,7 +89,23 @@ The contribution of this paper comprise:
 
 # Trajectory-Based Operations - Arrival Management
 
-## header 2
+Trajectory-based operations (TBO) are a core element of the ongoing transformation programs for air navigation services (e.g. Europe/SESAR, US/Next Gen, Japan/CARATS).
+On the conceptual level TBO describe a move from clearance-based operations to a highly predictable and negotiated trajectory execution between airspace users and air traffic control.
+The TBO concept entails the successive refinement (i.e. negotiation) between the parties starting from an inital planned trajectory through operations and the actual execution of flight.
+TBO builds on higher levels of information exchange between planning and flow management systems and the airborne and ground systems during flight operations. @fig-TBO-concept shows the overall timeline and evolution of a trajectory.
+
+```{r}
+#| label: fig-TBO-concept
+#| fig-cap: Trajectory-based operations - conceptual perspective
+#| out-width: 45%  # 2 column IEEE
+knitr::include_graphics("./figures/TBO-concept.png")
+``` 
+
+Conceptual approach := technology agnostic
+CONOPS may entail technological enablers and/or advanced procedures
+Performance objectives observed on concept functional level 
+
+
 
 # Conceptual Approach and Data
 
@@ -198,27 +215,66 @@ Under the EUROCONTROL Performance Review System, airport operators report moveme
 # Conclusions
 
 <!-- what did this paper show -->
+Ambitious political targets for 2050 have been formulated to curb the contribution of air transportation to climate change and work towards climate neutrality.
+Policy and industry action revolve around a variety of measures. 
+Within this context - and in light of the required lead time for a global pickup on sustainable aviation fuels, the introduction of novel airframe designs, or propulsion technology - increasing the operational efficiency is a declared now-term measure.
+There is a substantial benefit pool for the wider arrival phase covering the airspace within 200NM of the destination airport.
+Trajectory-based operations promise higher levels of predictability and reduced inefficiencies. 
+The benefits of reducing spacing and flow synchronisation measures in the terminal airspace are therefore dependent on the capability of balancing out operational variations from delivery of the aircraft to the wider arrival airspace.
 
-This paper aimed at exploring a data-driven approach to measuring arrival management based on open data.
+This proof-of-concept paper aims at operationalising a performance measure to characterise arrival management techniques, but also provide a basis to discuss the handover from the enroute phase to the wider arrival airspace. 
+
+This paper aimed at exploring a data-driven approach to measuring operational efficiency during the arrival phase. 
+In light of the ongoing discussions about the climate impact of air transportation and the contr
+Arrival management based on open data.
 
 <!-- strength and weaknesses -->
+The proposed approach builds on the generalisation of a well-understood key performance metric for the wider arrival airspace.
+It follows a data-driven approach that is independent of detailed local context modelling.
+For example, local airspace restrictions or procedures are embedded in the temporal-spatial framework.
+Measuring the spacing deviation between interacting arrival flights provides a basis for the analysis of approach concepts that can help to streamline the arrival sequencing and contribute to the further reduction of unnecessary fuel burn and emissions. 
+
+This proof-of-concept addresses the aspect of transparency by making use of openly available air transport trajectory data and open (analytical) software. The approach is readily transferrable to other regions.
 
 <!-- application -->
+The goal of this work was the initial development of an operational performance measure.
+Further validation is required at a larger set of European (and global airports).
+This will allow for the refinement of the parameterization of the approach.
+It is planned to roll-out the approach under the umbrella of the EUROCONTROL Performance Review System.
+This will provide European stakeholders with a means to address enhancement of arrival operations, and may help to build a catalogue of arrival management techniques that support higher levels of efficiency.
 
 <!-- further research -->
+This paper demonstrated feasibility of the approach. While the proposed performance monitoring of the spacing deviation envelope provides a basis for identifying inefficiencies during the arrival flow, there is a need to account also for factors driving and impacting the observed performance. 
+The temporal assessment of spacing deviation 
+
+* weather, wind
+* runway system configuration, adjacent aerodromes/level capping
+
+On the algorithmic level, future work should address the impact of the geospatial dimensions of cells and the method of their definition.
+
+This paper applied a observational approach to determining the reference times per cell. 
+This will pose challenges for longer time horizons as the continual update and processing of arrival trajectories would require substantial resources. 
+A possibility is the use of data structures to support the continual online accumulation of statistics without the need to store the complete historic dataset or processed artefacts.   
+
 
 <!-- final appraisal -->
+The results demonstrate the general feasibility of the approach.
+The proposed approach offers a measure to start the dialogue between operational planners and stakeholders to identify benefit pools during the arrival phase. 
+
 
 # Reproducibility {.unnumbered}
 
 This paper has been built with the R/RStudio ecosystem.
 The draft manuscript and its supporting data preparatory steps are archived at https://github.com/rainer-rq-koelle/paper-2023-ICNS.
 
+<!--
 The script to download the weekly global datasets are included.
 The cleaned trajectory data is stored at: \<\<tbd\>\>.
+-->
 
 # Acknowledgment and Disclaimer {.unnumbered}
 
-The authors thank the comments by XX YY ZZ.
+The authors thank the comments by colleagues from the Performance Section of the Department of Airspace Control (DECEA) Brazil and the Performance Review Unit of EUROCONTROL. 
+This study would have not been feasible without the generous support of Opensky Network and the many community members collecting and feeding open ADSB data. 
 
-The views expressed are the authors' own and do not represent a policy or position of EUROCONTROL <!-- and co-authors organisations -->.
+The views expressed are the authors' own and do not represent a policy or position of DECEA or EUROCONTROL <!-- and co-authors organisations -->.
