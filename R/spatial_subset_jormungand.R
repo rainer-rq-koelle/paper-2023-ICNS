@@ -25,3 +25,8 @@ spatial_subset_jormungand <- function(.df_latlon, .outer_poly, ...){
   }
    df <- df[.outer_poly, ]
 }
+
+establish_radial_jormungand <- function(.center_latlon, .radius_NM = 205, ...){
+  center <- cast_latlon_to_pts(.center_latlon)
+  circle <- center |> sf::st_buffer(dist = .radius_NM * 1852, nQuadSegs = 60 )
+}

@@ -30,10 +30,16 @@ affiliations:
     country: USA
 
 abstract: |
-  This document is a sample illustrating the Quarto `ieeetran` template.
-  It includes the key elements of a scientific articles 
-  (references, equations, figures, tables, code, cross references).
-  The template enables the generation of IEEE-formatted article from a Jupypter notebook.
+  In light of the on-going discussion on climate change, operational efficiency of air navigation has gained a higher visibility.
+  Efficient operations will positively influence the fuel burn by airspace users. 
+  While the development and introduction of novel aircraft airframe and propulsion technologies, 
+  the global pickup rate of sustainable aviation fuel, and benefits mechanism of market-based measures promise a positive effect
+  over time, >> reducing unnecessary contraints on airspace users can be immediately deployed. 
+  There is still a considerable benefit pool for arrival operations. 
+  This proof-of-concept paper explores the use of open data for the analysis of operational efficiency within the extended terminal airspace.
+  To characterise the potentail benefit pool, a method to quantify the spacing deviation between successive flights is developed.
+  This paper summarises the conceptual approach and reports on the first findings of an use-case analysis for a subset of European airports.
+  The results show the general feasibility of the approach and help to identify requirements for the further development of operational performance measures. 
 keywords: [template, demo]
 reference-section-title: References
 bibliography: bibliography.bib
@@ -46,6 +52,7 @@ execute:
 #    - latex-environment
 environments: [mytable, mywidetable]
 ---
+
 
 # Introduction
 
@@ -83,7 +90,20 @@ The contribution of this paper comprise:
 
 ## header 2
 
-# Data and Conceptual Approach
+# Conceptual Approach and Data
+
+## Research Approach
+
+This paper follows an exploratory research process (c.f. @fig-research-approach).
+We frame the work as a operational performance analytical problem.
+
+```{r}
+#| label: fig-research-approach
+#| fig-cap: Exploratory research approach
+#| out-width: 45%     # 2 column half-size
+knitr::include_graphics("./figures/exploratory-research-concept.png")
+```
+
 
 ## Approach
 
@@ -154,7 +174,18 @@ We consider the observed temporal spacing $s_{ij}$ as a lower bound for safe ope
 Using the constant time delay principle, the spacing deviation (or spacing error) at time t considers the current position of trailer at time $t$, and the past position of leader at time $t-s$.
 Based on our approach, the spacing deviation is defined as the temporal difference between the respective reference times for the position of the leader and trailer: 
 
-$$spacing deviation (t) = ref{\_}time(trailer_{(t)}) - ref{\_}time(leader_{(t - s)})$$
+$$\begin{aligned}
+spacing \text{ } deviation (t) =  ref{\_}time(trailer_{(t)}) - \\ref{\_}time(leader_{(t - s)})
+\end{aligned}$${#eq-spacing-deviation}
+
+```{r}
+#| label: fig-follower-leader-example
+#| fig-cap: Example timeline of spacing deviations between interacting arrivals
+#| out-width: 45%     # 2 column half-size
+knitr::include_graphics("./figures/example-follower-leader-pairs.png")
+```
+
+@eq-spacing-deviation does something.
 
 # Case Study - Results
 

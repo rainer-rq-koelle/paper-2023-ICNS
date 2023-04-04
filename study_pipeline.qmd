@@ -1,0 +1,90 @@
+---
+title: "Industrialise Pipeline"
+format: pdf
+---
+
+```{r}
+list_my_functions <- list.files(path = "./R", pattern = "\\.R", full.names = TRUE)
+list_my_functions |> purrr::walk(.f = ~ source(.x))
+```
+
+
+## Overview
+
+This Quarto document provides a staged approach to generating the data for the ICNS2023 paper.
+
+1. load and extract test data for the studied European airports
+2. .... generate mickey & store interim results
+3. ... do results
+
+
+## Load and extract study data
+
+```{r}
+#| message: false
+load_osn_dumps <- function(.ptn, .pth_to_dumps){
+    # list downloaded dumps
+    fns <- list.files(path = .pth_to_dumps, pattern = .ptn, full.names = TRUE)
+
+    # load list of chosen dumps
+    ds  <- fns |> 
+      purrr::map_dfr(.f = read_osn_tar_file) |> 
+      make_nice_names_osn()
+    ds <- ds |> 
+      dplyr::mutate(
+            dplyr::across(
+                  .cols = c("ALT_B","ALT_G")
+                , .fns  = coerce_meter_to_feet)
+            ) 
+    ds <- ds |> coerce_unixepoch_to_datetime()
+    return(ds)
+}
+
+extract_and_save_jormungand_data <- function(
+    .apt, .range = 205, .ds, .save_path = "./data-study/"
+    , .save_label = ptn
+    , .aip_file = "./data/aip-arp-rwys.csv", ...
+    ){
+  # load AIP data for study  
+  aip <- read_csv(.aip_file, show_col_types = FALSE)
+  # extract airport ARP
+  arp <- filter(aip, ICAO == .apt, REF == "ARP") |> dplyr::rename(ELEV = GEOM_ALT)
+  jormungand <- establish_radial_jormungand(arp, .range) |> 
+    dplyr::mutate(REF = paste(ICAO,REF,.range, sep = "-")) |> 
+    dplyr::select(ICAO, REF, geometry)
+  
+  # subset study data for range
+  svs <- spatial_subset_jormungand(.ds, jormungand)
+  
+  # write out study data by airport range
+  fn_out <- paste0(.save_path, .apt, "-200NM-", .save_label, ".parquet")
+  message(paste0("writing ", fn_out))
+  arrow::write_parquet(svs |> sf::st_drop_geometry(), fn_out)
+}
+
+extract_and_save_study_dataset_for_airport <- function(
+    .study_apts
+    ,.ptn, .pth_to_dumps, .range = 205, ...
+){
+  # get osn dump
+ 
+}
+
+```
+
+Loaded: 
+ 2019-08-01, 02, 03, 04, 05, 06, 07
+ 2022-08-01, ... 07, 08, 09
+
+```{r}
+# European study data
+pth_to_dumps <- "../__DATA/OSN-dumps"
+ptn <- "2022-08-09"
+study_apts <- c("EGLL","EDDM","EDDF", "LSZH","EHAM")
+
+ osn <- load_osn_dumps(ptn, pth_to_dumps)
+  #subset for study airports
+  study_apts |> 
+    purrr::walk( .f = ~ extract_and_save_jormungand_data(.x, .ds = osn) )
+```
+

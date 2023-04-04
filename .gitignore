@@ -3,6 +3,9 @@
 .RData
 .Ruserdata
 
+# ignore study files
+data-study/*
+
 # ignore heavy data files
 data/validation-EGLL-2019.csv.gz
 data/usa-katl-20220509.parquet

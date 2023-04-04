@@ -342,6 +342,12 @@ roll_median <- function(.df, .var, .whs, .target_var){
 do for 1 pair
 ```{r}
 rq <- my_pairwise_spacing("400550-0", "89505a-0",.t_trail = 134, .bins = tessel_lookup) 
+rq1 <- my_pairwise_spacing("89505a-0","40054d-0", .t_trail = 122, .bins = tessel_lookup)
+rq2<- my_pairwise_spacing("71005e-0", "4007f2-0", .t_trail = 91, .bins = tessel_lookup)
+rq3 <- my_pairwise_spacing("4007f2-0","896464-0", .t_trail = 98, .bins = tessel_lookup)
+
+rq <- rq |> bind_rows(rq1, rq2, rq3) |> 
+  mutate(GID = paste(UID, SEQ_UID, RWY, sep = "-"))
 
 # can we smooth the results ======================
 #' Smoothing function 
@@ -356,11 +362,16 @@ roll_median <- function(.df, .var, .whs, .target_var){
 whs <- 45
 rqq <- rq |> group_by(UID, SEQ_UID, RWY) %>% 
   roll_median(MIN_TIME_OFF, whs, SPACING) |> 
-  filter(STEP < 2500)
+  filter(STEP < 2500) 
+
+rqq <- rqq |> filter(!grepl(pattern = "-NA-", x = GID), STEP < 1250)
 
 ggplot() + 
-  geom_line(data = rq,  aes(x = STEP, y = MIN_TIME_OFF), alpha = 0.5) +
-  geom_line(data = rqq, aes(x = STEP, y = SPACING), color = "blue")
+ # geom_line(data = rq,  aes(x = STEP, y = MIN_TIME_OFF, group = GID), alpha = 0.5) +
+  geom_line(data = rqq, aes(x = STEP, y = SPACING, group = GID, color = GID) ) +  #  = "blue")
+  labs(x = "time to fly [sec]", y = "spacing deviation [sec]"
+       ,color = "follower-leader-pair") +
+  theme(legend.position = c(0.2,0.2))
 ```
 
 do for more couples 
