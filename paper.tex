@@ -193,11 +193,25 @@ corporation.}
 
 % abstract
 \begin{abstract}
-    This document is a sample illustrating the Quarto \texttt{ieeetran}
-    template. It includes the key elements of a scientific articles
-    (references, equations, figures, tables, code, cross references).
-    The template enables the generation of IEEE-formatted article from a
-    Jupypter notebook.
+    In light of the on-going discussion on climate change, operational
+    efficiency of air navigation has gained a higher visibility.
+    Efficient operations will positively influence the fuel burn by
+    airspace users. While the development and introduction of novel
+    aircraft airframe and propulsion technologies, the global pickup
+    rate of sustainable aviation fuel, and benefits mechanism of
+    market-based measures promise a positive effect over time,
+    \textgreater\textgreater{} reducing unnecessary contraints on
+    airspace users can be immediately deployed. There is still a
+    considerable benefit pool for arrival operations. This
+    proof-of-concept paper explores the use of open data for the
+    analysis of operational efficiency within the extended terminal
+    airspace. To characterise the potentail benefit pool, a method to
+    quantify the spacing deviation between successive flights is
+    developed. This paper summarises the conceptual approach and reports
+    on the first findings of an use-case analysis for a subset of
+    European airports. The results show the general feasibility of the
+    approach and help to identify requirements for the further
+    development of operational performance measures.
 \end{abstract}
 
 % body
@@ -210,8 +224,9 @@ expected growth in international air traffic until lower emitting
 technologies and fuels and other mitigating measures are developed and
 deployed .. ICAO adopted at its 41st Assembly a long-term aspirational
 goal for international aviation
-\protect\hyperlink{ref-icao2022}{{[}1{]}}. In support to the Paris
-Agreement, the goal is to achieve net-zero carbon emissions by 2050.
+\protect\hyperlink{ref-icao2022}{\textbf{icao2022?}}. In support to the
+Paris Agreement, the goal is to achieve net-zero carbon emissions by
+2050.
 
 Levers for fuel reduction:
 
@@ -228,7 +243,14 @@ propulsion technologies or aircraft design requires further research.
 
 Despite the introduction of an initial market-based mechanism, immediate
 action to curb fuel burn and CO2 emissions rests with improvements of
-operational efficiency.
+operational efficiency. ICAO has introduced the trajectory-based
+operations concept, which promises operational and environmental
+benefits to aviation. where the flight trajectory of an aircraft is
+flown as close as possible to the userpreferred route, with as little
+disruptions as possible through collaborative decision-making mechanism.
+This includes reducing potential conflicts and resolving demand/capacity
+imbalances earlier and more efficiently. TBO can therefore bring
+significant operational and environmental benefits to aviation.\\
 
 The contribution of this paper comprise:
 
@@ -249,9 +271,26 @@ Management}\label{trajectory-based-operations---arrival-management}}
 \hypertarget{header-2}{%
 \subsection{header 2}\label{header-2}}
 
-\hypertarget{data-and-conceptual-approach}{%
-\section{Data and Conceptual
-Approach}\label{data-and-conceptual-approach}}
+\hypertarget{conceptual-approach-and-data}{%
+\section{Conceptual Approach and
+Data}\label{conceptual-approach-and-data}}
+
+\hypertarget{research-approach}{%
+\subsection{Research Approach}\label{research-approach}}
+
+This paper follows an exploratory research process (c.f.
+Figure~\ref{fig-research-approach}). We frame the work as a operational
+performance analytical problem.
+
+\begin{figure}
+
+{\centering \includegraphics[width=0.45\textwidth,height=\textheight]{./figures/exploratory-research-concept.png}
+
+}
+
+\caption{\label{fig-research-approach}Exploratory research approach}
+
+\end{figure}
 
 \hypertarget{approach}{%
 \subsection{Approach}\label{approach}}
@@ -274,7 +313,7 @@ Milestone}\label{trajectory-flight-phase-segmentation-milestone}}
 
 Different approaches exists to detect and describe aircraft flight
 phases, e.g.~recent machine learning algorithm
-\protect\hyperlink{ref-sun2017flightphase}{{[}2{]}}. This paper
+\protect\hyperlink{ref-sun2017flightphase}{{[}1{]}}. This paper
 implements a heuristic approach with a focus on the detection of arrival
 traffic at the study airports. Figure Figure~\ref{fig-EGLL-arrivals}
 shows the detected arrival flights for a single day.
@@ -300,19 +339,98 @@ geospatial heuristic. Conceptually, aircraft are aligned with the runway
 based on the closeness of its pre-landing positions to the extended
 runway centerline.
 
-\hypertarget{arrival-sequencing}{%
-\subsection{Arrival Sequencing}\label{arrival-sequencing}}
+\begin{figure}
 
-Spacing deviation
+{\centering \includegraphics[width=0.45\textwidth,height=\textheight]{./figures/KATL-traffic-single-day.png}
+
+}
+
+\caption{\label{fig-KATL-arrivals}Arrivals at Atlanta Hartsfiled (KATL)
+on sample day}
+
+\end{figure}
+
+\hypertarget{generalisation-of-additional-time-in-terminal-airspace}{%
+\subsection{Generalisation of additional time in terminal
+airspace}\label{generalisation-of-additional-time-in-terminal-airspace}}
+
+The additional time in terminal airspace (c.f. ICAO KPI08, EUROCONTROL
+Performance Review System \& European Single European Sky Performance
+Scheme) is typically expressed as the difference between the observed
+travel time of a flight entering the terminal area (e.g.~40NM or 100NM
+from the aerodrome reference point) and a respective reference time. The
+latter is defined as the travel time in non-congested situations. For
+practical reasons, the reference (or uncongested) travel times are
+determined based on a historical data analysis and sub-sampling the
+population of arrival flights per entry sector/fix, aircraft wake
+turbulence category and propulsion type (as a proxy of approach speed),
+and landing runway.
+
+This notion of additional time can be generalised for every subset of
+points within the arrival airspace. On the basis of historic data, the
+travel time between such a set of points can be determined and compared
+to the flight time of an uncongested trajectory.
+
+\begin{figure}
+
+{\centering \includegraphics[width=0.45\textwidth,height=\textheight]{./figures/concept.png}
+
+}
+
+\caption{\label{fig-spacing-deviation-concept}Spacing deviation concept}
+
+\end{figure}
+
+For practical reasons, this paper discretises the arrival airspace into
+cells. In particular, we are using hexogonal cells and the H3-indexing
+system \protect\hyperlink{ref-ubertechnologiesinc2018}{{[}2{]}}. Uber
+originally developed the Hexagonal Hierarchical Geospatial Indexing
+System (H3) as a grid system for supporting the optimisation of ride
+planning (and associated pricing and dispatch) and for visualisation
+purposes. H3 is available as an open-source library written in C and
+with bindings in several languages. We use hexagon-cells of resolution 8
+with an average edge length of 0.5314 km.
+
+\hypertarget{arrival-sequencing---spacing-deviation}{%
+\subsection{Arrival Sequencing - Spacing
+Deviation}\label{arrival-sequencing---spacing-deviation}}
 
 Let us consider a pair of consecutive landing aircraft denoted leader
-and trailer, with s their required time spacing1. Using the constant
-time delay principle, the spacing deviation (or spacing error) at time t
-considers the current position of trailer at time t, and the past
-position of leader at time t -- s. Precisely, it is defined as the
-difference between the respective minimum times from these two positions
-(see figure below): spacing deviation (t) = min time (trailer (t)) --
-min time (leader (t -- s))
+and trailer, with \(s\) being their temporal spacing (inter-arrival
+time). From an operational perspective, highly efficient operations will
+maximise the utilisation of the available runway (system) capacity.
+Accordingly, we can assume that during peak times the temporal spacing
+at landing \(s\) accounts for the operational concept applied at the
+airport, and only comprises a minimal spacing error. Potential error
+sources include additional safety margins applied by the air traffic
+controller (or aircrew when landing under visual flight rules),
+variations of the arrival spacing due to reduction of airspeed during
+the flare. We consider the observed temporal spacing \(s_{ij}\) as a
+lower bound for safe operations.
+
+Using the constant time delay principle, the spacing deviation (or
+spacing error) at time t considers the current position of trailer at
+time \(t\), and the past position of leader at time \(t-s\). Based on
+our approach, the spacing deviation is defined as the temporal
+difference between the respective reference times for the position of
+the leader and trailer:
+
+\begin{equation}\protect\hypertarget{eq-spacing-deviation}{}{\begin{aligned}
+spacing deviation (t) =  ref{\_}time(trailer_{(t)}) - \\ref{\_}time(leader_{(t - s)})
+\end{aligned}}\label{eq-spacing-deviation}\end{equation}
+
+\begin{figure}
+
+{\centering \includegraphics[width=0.45\textwidth,height=\textheight]{./figures/example-follower-leader-pairs.png}
+
+}
+
+\caption{\label{fig-follower-leader-example}Example timeline of spacing
+deviations between interacting arrivals}
+
+\end{figure}
+
+Equation~\ref{eq-spacing-deviation} does something.
 
 \hypertarget{case-study---results}{%
 \section{Case Study - Results}\label{case-study---results}}
@@ -360,20 +478,18 @@ or position of EUROCONTROL .
 
 \hypertarget{refs}{}
 \begin{CSLReferences}{0}{0}
-\leavevmode\vadjust pre{\hypertarget{ref-icao2022}{}}%
-\CSLLeftMargin{{[}1{]} }%
-\CSLRightInline{ICAO, {``Resolution A41-21: Consolidated statement of
-continuing ICAO policies and practices related to environmental
-protection {\textemdash} climate change,''} 2022 {[}Online{]}.
-Available:
-\url{https://www.icao.int/environmental-protection/Documents/Assembly/Resolution_A41-21_Climate_change.pdf}}
-
 \leavevmode\vadjust pre{\hypertarget{ref-sun2017flightphase}{}}%
-\CSLLeftMargin{{[}2{]} }%
+\CSLLeftMargin{{[}1{]} }%
 \CSLRightInline{J. Sun, J. Ellerbroek, and J. Hoekstra, {``Flight
 extraction and phase identification for large automatic dependent
 surveillance\textendash broadcast datasets,''} \emph{Journal of
 Aerospace Information Systems}, vol. 14, no. 10, pp. 566--572, 2017. }
+
+\leavevmode\vadjust pre{\hypertarget{ref-ubertechnologiesinc2018}{}}%
+\CSLLeftMargin{{[}2{]} }%
+\CSLRightInline{Uber Technologies Inc, {``H3: Hexagonal hierarchical
+geospatial indexing system.''} 2018 {[}Online{]}. Available:
+\url{https://h3geo.org/}}
 
 \leavevmode\vadjust pre{\hypertarget{ref-apdf_v1_2019}{}}%
 \CSLLeftMargin{{[}3{]} }%
