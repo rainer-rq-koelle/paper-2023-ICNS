@@ -92,7 +92,7 @@ The contribution of this paper comprise:
 Trajectory-based operations (TBO) are a core element of the ongoing transformation programs for air navigation services (e.g. Europe/SESAR, US/Next Gen, Japan/CARATS).
 On the conceptual level TBO describe a move from clearance-based operations to a highly predictable and negotiated trajectory execution between airspace users and air traffic control.
 The TBO concept entails the successive refinement (i.e. negotiation) between the parties starting from an inital planned trajectory through operations (i.e. the actual execution of flight and agreed trajectory).
-TBO builds on higher levels of information exchange between planning and flow management systems and the airborne and ground systems during flight operations. @fig-TBO-concept shows the overall timeline and evolution of a trajectory.
+TBO builds on higher levels of information exchange between planning and flow management systems and the airborne and ground systems during flight operations. @fig-TBO-concept shows the overall timeline and evolution of a trajectory. ICAO is in the process of harmonising the global interpretation and application of the TBO concept (c.f. ICAO). Within that context a variety of scenarios and applications are described. This paper focusses on the arrival phase of flights and can be broadly assigned to the TBO-airport domain. 
 
 ```{r}
 #| label: fig-TBO-concept
@@ -104,6 +104,12 @@ knitr::include_graphics("./figures/TBO-concept.png")
 For this study we postulate the following goal of trajectory based arrival management:
 “… to reduce inefficiencies in the (extended) arrival phase by establishing an arrival sequence to require less costly sequencing close to the airport absorbing time/distance in more fuel efficient altitudes.”
 
+At the time being, there exists a group of predominant arrival management techniques broadly fullfilling this goal scope.
+
+* runway pressure: this concept aims at maximizing the utilisation of the arrival runway capacity in combination with increasing the flexibility of air traffic controllers to influence the sequence of arrivals. This can be achieved by holding aircraft in close(r) proximity to the airport allowing for close queue-based control of the arrival sequence.
+* (classical) vectoring: this concept builds on the mental model of an air traffic controller to establish the sequence as part of the standard approach procedures in combination with vectoring to adapt the desired landing sequence. 
+* tromboning: in analogy of the music instrument, tromboning is based on area navigation points that can extend the arrival leg to build the sequence of successive arrivals. Aircraft are typically (re)cleared to follow one of the pathes defined by the respective turning points (trombone extensions). 
+* point-merge: Point merge is designed to work in high traffic loads without radar vectoringpoint. It builds on a fixed gate through which a sequence of flights will proceed. The equidistant sequencing legs ensure the inter-arrival spacing and aircraft are cleared to the gate once the required separation is established. 
 
 The focus of this paper is to evaluate the feasibility of studying arrival management techniques at different airports with a spatio-temporal approach.
 Previous work focussed on developing this concept, e.g.  liu & chrisinasen.
