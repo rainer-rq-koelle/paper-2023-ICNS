@@ -91,7 +91,7 @@ The contribution of this paper comprise:
 
 Trajectory-based operations (TBO) are a core element of the ongoing transformation programs for air navigation services (e.g. Europe/SESAR, US/Next Gen, Japan/CARATS).
 On the conceptual level TBO describe a move from clearance-based operations to a highly predictable and negotiated trajectory execution between airspace users and air traffic control.
-The TBO concept entails the successive refinement (i.e. negotiation) between the parties starting from an inital planned trajectory through operations and the actual execution of flight.
+The TBO concept entails the successive refinement (i.e. negotiation) between the parties starting from an inital planned trajectory through operations (i.e. the actual execution of flight and agreed trajectory).
 TBO builds on higher levels of information exchange between planning and flow management systems and the airborne and ground systems during flight operations. @fig-TBO-concept shows the overall timeline and evolution of a trajectory.
 
 ```{r}
@@ -105,13 +105,17 @@ For this study we postulate the following goal of trajectory based arrival manag
 “… to reduce inefficiencies in the (extended) arrival phase by establishing an arrival sequence to require less costly sequencing close to the airport absorbing time/distance in more fuel efficient altitudes.”
 
 
+The focus of this paper is to evaluate the feasibility of studying arrival management techniques at different airports with a spatio-temporal approach.
+Previous work focussed on developing this concept, e.g.  liu & chrisinasen.
+Both groups studies the evolution of spacing over time and laid the foundation for the conceptualisation of spacing deviation concept and sequencing pressure 
+The benefit of this approach is to provide an operational performance measure that supports the assessment/comparison of different approach techniques.
+The existing performance framework (ICAO GANP, ECTROL , EU) apply the additioanl time concept to discrete points of the arrival airspace.
+These discrete positions represent the entry into the (near-airport) airspace defined by a concentric circle of 40NM or 100NM.
 
-
-Conceptual approach := technology agnostic
-CONOPS may entail technological enablers and/or advanced procedures
-Performance objectives observed on concept functional level 
-
-
+The approach provides for the following performance measurement / monitoring benefits:
+* the conceptual approach is technology agnostic;
+* the local concept of operations specifies the respective techniques used and may entail technological enablers and/or advanced procedures; and
+* ultimately, performance objectives are observabel at the on concept functional level.
 
 # Conceptual Approach and Data
 
