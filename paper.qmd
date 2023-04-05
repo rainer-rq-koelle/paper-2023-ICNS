@@ -144,13 +144,17 @@ This study builds on open trajectory data from Opensky Network.
 Opensky Network is a non-profit organisation and community-based surveillance data collection network. 
 The collected air traffic data is available to researchers and government organisations on a license-free basis.
 Performance monitoring is based on the principle of reproducibility and transparency. 
-Open access to the underlying data and enrusing reproducibility of the analysis is a key requirement [@PRC_OPDI2022).
+Open access to the underlying data and enrusing reproducibility of the analysis is a key requirement [@PRC_OPDI2022].
+For this feasibilty study we used a prepared download sample of the Opensky Network data comprising 10 days of operations in 2019 and 2022.
 
+The airport information required for this study was derived from Openstreet Map and validated by publicly available AIP information.
+Openstreet Map also builds on a community driven effort to provide accurate and timely maps. 
+It revolves around seeing the public as a central source of geographical information and voluteering to its maintenance.
+Over the past years, the information on airports has iteratively improved. 
+The principal information required for this paper comrpised the aerodrome reference points and runway thresholds and associated elevations.
 
--   trajectory data - Opensky Network, weekly downloads
--   airport information - Openstreet Map
-
-data downloaded & script development, data cleaning
+The primary input to this paper was the air traffic data downloaded from Opensky Network.
+The following sections describe the data preparatory and analytical steps taken and motivates the chosen heuristics and approaches.
 
 ### Trajectory Flight Phase Segmentation & Milestone
 
