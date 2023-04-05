@@ -140,7 +140,12 @@ knitr::include_graphics("./figures/exploratory-research-concept.png")
 
 ## Approach
 
-data preparation
+This study builds on open trajectory data from Opensky Network. 
+Opensky Network is a non-profit organisation and community-based surveillance data collection network. 
+The collected air traffic data is available to researchers and government organisations on a license-free basis.
+Performance monitoring is based on the principle of reproducibility and transparency. 
+Open access to the underlying data and enrusing reproducibility of the analysis is a key requirement [@PRC_OPDI2022).
+
 
 -   trajectory data - Opensky Network, weekly downloads
 -   airport information - Openstreet Map
