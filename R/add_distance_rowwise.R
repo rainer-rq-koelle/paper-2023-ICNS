@@ -38,7 +38,7 @@ add_time_and_distance_to_go <- function(.trj, .mst = "ALDT", .time_unit = "sec")
     dplyr::mutate(
       TIME_2GO = difftime(
           TIME[which(MST == .mst)], TIME, units = .time_unit)
-    , DIST_2GO = DIST_FLOWN[which(MST == .mst) - DIST_FLOWN])
+    , DIST_2GO = DIST_FLOWN[which(MST == .mst)] - DIST_FLOWN)
   
   return(df)
 }

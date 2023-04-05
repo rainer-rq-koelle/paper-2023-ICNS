@@ -88,3 +88,113 @@ study_apts <- c("EGLL","EDDM","EDDF", "LSZH","EHAM")
     purrr::walk( .f = ~ extract_and_save_jormungand_data(.x, .ds = osn) )
 ```
 
+to-do: read-in Brazil use-case, if time permits US use-case: KATL
+
+
+## Prepare study data set and write it out
+
+```{r}
+study_loop <- function(.apt, .fn, .debug, ...){
+  
+  #----------- read airport data -------------------------
+  aip <- readr::read_csv("./data/aip-arp-rwys.csv", show_col_types = FALSE) |> 
+    dplyr::filter(ICAO == .apt)
+  if("GEOM_ALT" %in% names(aip)){
+    aip <- aip |> dplyr::rename(ELEV = GEOM_ALT)
+    }
+  
+  arp     <- aip |> dplyr::filter(ICAO == .apt,   REF == "ARP")
+  rwys    <- aip |> dplyr::filter(ICAO == .apt, ! REF == "ARP")
+  rwy_centerline_ls <- cast_rwy_ctr_line_ls(rwys)
+  apt_box <- airport_centerline_box(rwys, ...) 
+  
+  # ---------------------- load trajectory data --------------------------------
+  warning(paste(.apt, " - reading - ", .fn))
+  # check entry file format
+  if(file_extension(.fn) == "parquet"){
+    ds <- arrow::read_parquet(.fn)
+  }
+  if(file_extension(.fn) == "feather"){
+    ds <- arrow::read_feather(.fn)
+  }
+  ds <- ds %>%
+    tibble::as_tibble() |>
+    #---- enforce above threshold ~ ELEV arp
+    dplyr::filter(ALT_B >= arp$ELEV + 300) |>
+     fix_altitude_heuristic() |>
+     Alt_Outlier_filter(.alt_var = ALT_B)
+  
+  #---------------------- check for local traffic ----------------------------
+  # subset icao24s inside airport box
+  seen_at_airport <- ds |> 
+    dplyr::filter(ALT_B <= arp$ELEV + 4000) |> 
+    spatial_subset_jormungand(apt_box, ...) |> 
+    dplyr::distinct(ICAO24) 
+  
+  ds <- ds |> 
+    dplyr::filter(ICAO24 %in% seen_at_airport$ICAO24) |> 
+    identify_trajectory_legs(.max_gap = 5) |> 
+    mutate(UID = paste(ICAO24, LEG, sep = "-")) 
+  
+  phase <- ds |> 
+    extract_4d_nest() |> 
+    confirm_arrival_at(apt_box, rwy_centerline_ls) |> 
+    check_arrival_orphan()
+  
+  # # # add landing time
+  phase_and_ldgtime <- add_landing_time(phase, rwys)
+}
+
+add_landing_time <- function(phase, rwys){
+  
+  arrs <- phase |> filter(ARR & !ORPHAN)
+  rest <- phase |> filter(! UID %in% arrs$UID )
+  
+  with_ldg_time <-  arrs |>
+    # estimate and assign landing time to arrival trajectories
+    dplyr::mutate(
+      study_trj = pmap(
+              .l = list(data, UID, RWY)
+            , .f = ~ add_landing_time_to_nested_data(..1, ..2, ..3, rwys)
+            )
+      ) |> 
+    # pullout ALDT as separate column
+    dplyr::mutate(
+      ALDT = map(.x = study_trj
+               , .f = ~ filter(.x, MST == "ALDT") |> pull(TIME)
+               )
+      ) |> tidyr::unnest(ALDT) |> 
+    # interpolate to 5sec
+    dplyr::mutate(
+      study_trj = map(.x = study_trj
+                    , .f = ~ interpolate_lin_4D(.x, .source = "OSN") |> 
+                             add_time_and_distance_to_go() |> 
+                             dplyr::mutate(H3_BIN = h3::geo_to_h3(c(LAT, LON), res = 8))
+                    )
+      )
+  
+  return(bind_rows(with_ldg_time, rest))
+}
+# safe_add_landing_time <- purrr::possibly(.f = add_landing_time, otherwise = NULL)
+# 
+# # make this fail safe
+# safe_study_loop <- purrr::safely(.f = study_loop)
+```
+
+```{r}
+#| message: false
+apt <- "EGLL"
+rwys <- readr::read_csv("./data/aip-arp-rwys.csv", show_col_types = FALSE) |> 
+  filter(ICAO == apt) |> filter(TYPE == "THR") |> rename(ELEV = GEOM_ALT)
+
+#fn  <- list.files(path = "./data", pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
+fn  <- list.files(path = "./data-study", pattern = paste0("^", apt, "-200NM-"), full.names = TRUE)[-c(1:2)]
+ptn <- as.Date(str_extract(fn, "\\d{4}-\\d{2}-\\d{2}"), format="%Y-%m-%d")
+
+
+purrr::walk2(.x = fn[5], .y[5] = ptn
+             ,  .f = ~ study_loop(apt, .x) |> 
+                     readr::write_rds(file = paste0("./data-study/mickey-", apt, "-", .y[5], ".rds") )
+)
+
+```
